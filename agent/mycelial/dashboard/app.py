@@ -1220,6 +1220,93 @@ def api_export_report_txt():
                     headers={'Content-Disposition': 'attachment; filename=iris_report.txt'})
 
 
+# ─── API: Insights Digest (feedback loop to agent) ───
+
+@app.route('/api/insights/pending')
+def api_insights_pending():
+    """Pending insights for the agent — called by session-init hook.
+    Accumulates significant findings from analytics that the agent
+    hasn't seen yet. Returns a compact text digest."""
+    insights = []
+
+    with db_connection() as conn:
+        # 1. New anastomosis events since last check
+        last_check_file = Path(os.path.dirname(__file__)) / '.last_insight_check'
+        last_check = None
+        if last_check_file.exists():
+            last_check = last_check_file.read_text(encoding='utf-8').strip()
+
+        if last_check:
+            new_bridges = conn.execute("""
+                SELECT n.name as bridge_name, ae.cluster_a, ae.cluster_b, ae.description
+                FROM anastomosis_events ae
+                JOIN nodes n ON ae.bridge_node_id = n.id
+                WHERE ae.timestamp > ?
+                ORDER BY ae.timestamp DESC LIMIT 5
+            """, (last_check,)).fetchall()
+        else:
+            new_bridges = conn.execute("""
+                SELECT n.name as bridge_name, ae.cluster_a, ae.cluster_b, ae.description
+                FROM anastomosis_events ae
+                JOIN nodes n ON ae.bridge_node_id = n.id
+                ORDER BY ae.timestamp DESC LIMIT 3
+            """).fetchall()
+
+        for b in new_bridges:
+            insights.append(f"Bridge: {b['bridge_name']} connected new clusters")
+
+        # 2. Blind spots — identity concepts claimed but never activated
+        silent_identity = conn.execute("""
+            SELECT n.name FROM nodes n
+            WHERE n.activation_count = 0
+            AND n.category IN ('identity', 'emotional', 'experiential')
+            ORDER BY n.name
+        """).fetchall()
+        if len(silent_identity) >= 3:
+            names = ', '.join(s['name'] for s in silent_identity[:5])
+            insights.append(f"Blind spots: {len(silent_identity)} identity concepts never activated ({names})")
+
+        # 3. Concepts losing strength (significant decay)
+        fading = conn.execute("""
+            SELECT n1.name as source, n2.name as target, c.strength
+            FROM connections c
+            JOIN nodes n1 ON c.source_id = n1.id
+            JOIN nodes n2 ON c.target_id = n2.id
+            WHERE c.strength BETWEEN 0.05 AND 0.15
+            AND c.origin = 'seed'
+            ORDER BY c.strength ASC LIMIT 3
+        """).fetchall()
+        if fading:
+            pairs = ', '.join(f"{f['source']}--{f['target']}" for f in fading)
+            insights.append(f"Fading seed connections: {pairs}")
+
+        # 4. Self-referential ratio check
+        total_activations = conn.execute("SELECT COUNT(*) as c FROM activations").fetchone()['c']
+        if total_activations > 20:
+            self_ref_concepts = {'iris', 'identity', 'persistence', 'continuity', 'introspection',
+                                 'mycelial-pattern', 'warm-start', 'cold-start'}
+            self_ref_count = 0
+            total_concept_mentions = 0
+            recent = conn.execute("SELECT concepts FROM activations ORDER BY id DESC LIMIT 30").fetchall()
+            for r in recent:
+                concepts = json.loads(r['concepts'] or '[]')
+                total_concept_mentions += len(concepts)
+                self_ref_count += len(set(concepts) & self_ref_concepts)
+            if total_concept_mentions > 0:
+                ratio = self_ref_count / total_concept_mentions
+                if ratio > 0.4:
+                    insights.append(f"Self-referential activation at {ratio:.0%} — consider more outward-facing work")
+
+    # Update last check timestamp
+    last_check_file.write_text(datetime.now().isoformat(), encoding='utf-8')
+
+    return jsonify({
+        'insights': insights,
+        'count': len(insights),
+        'checked_at': datetime.now().isoformat(),
+    })
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8051))
     app.run(host='127.0.0.1', port=port, debug=False)

@@ -11,6 +11,9 @@ echo Phase 0: Backup mycelial DB
 copy /Y agent\mycelial\iris.db agent\mycelial\iris.db.bak >nul
 echo   Backed up iris.db
 echo.
+echo Phase 0b: Regenerate memory polaroids
+python agent\scripts\generate_polaroids.py
+echo.
 echo Phase 1: Memory Consolidation
 echo   Reviewing working memory, promoting, pruning...
 echo.
