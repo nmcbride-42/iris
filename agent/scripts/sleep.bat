@@ -12,7 +12,12 @@ echo   Reviewing working memory, promoting, pruning...
 echo.
 bash agent/scripts/consolidate.sh
 echo.
-echo Phase 2: Dream Processing
+echo Phase 2: Mycelial Network Consolidation
+echo   Decaying unused connections, promoting scouts, pruning dead ends...
+echo.
+python agent/mycelial/consolidate.py sleep
+echo.
+echo Phase 3: Dream Processing
 echo   Finding connections, surfacing questions, generating insights...
 echo.
 bash agent/scripts/dream.sh

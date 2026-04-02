@@ -35,7 +35,8 @@ Read the following files to understand current state:
 - agent/memory/index.md
 - agent/memory/working/ (all files in this directory)
 - agent/state/current.md
-- agent/state/resonance.md
+- agent/state/resonance.md (current state)
+- agent/state/resonance-history.md (history table)
 - agent/journal/ (the 3 most recent entries)
 
 Then perform consolidation:
@@ -47,11 +48,18 @@ Then perform consolidation:
 
 2. Update agent/memory/index.md with any new entries added to long-term or core
 
-3. In agent/state/resonance.md: move the Current Resonance section contents into a new row in the Resonance History table (keep the section headers but clear the content for next session)
+3. In agent/state/resonance.md: clear the Current Resonance live sections (Engagement Level, Active Tensions, What's Landing, What's Flat) for next session. Do NOT add curiosity vectors — those are derived from the DB. In agent/state/resonance-history.md: add a new row to the Resonance History table with the archived resonance data.
 
-4. Write a brief consolidation journal entry to agent/journal/${DATESTAMP}-consolidated.md
+3b. In agent/state/current.md: keep only: Active Systems, the single most recent "Latest Session" entry, Minion Network, Infrastructure, Mycelial Network, Open Items, and a one-line Previous Sessions index. Archive any older session detail entries — their content is already in the journal files. The "Previous Sessions" section should be a single line of session summaries, not detailed breakdowns.
 
-5. Append a row to agent/memory/consolidation-log.md
+4. Check the mycelial network state by querying the database directly:
+   - Run: python -c "import sys; sys.path.insert(0,'agent/mycelial'); from mycelial import *; conn=get_db(); import json; print(json.dumps(get_network_stats(conn)))"
+   - Note total nodes, connections, avg strength in the consolidation log
+   - This gives a snapshot of the network at sleep time for tracking growth over time
+
+5. Write a brief consolidation journal entry to agent/journal/${DATESTAMP}-consolidated.md
+
+6. Append a row to agent/memory/consolidation-log.md (include mycelial stats if available)
 
 If there are no working memory files and nothing to consolidate, just write a brief journal entry noting that and move on. Do not manufacture work.
 TASKPROMPT

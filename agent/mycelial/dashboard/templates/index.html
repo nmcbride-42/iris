@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iris — Mycelial Network</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1>Iris Mycelial Network</h1>
+            <span class="subtitle">roots beneath the trunk</span>
+        </div>
+        <div class="header-stats" id="header-stats"></div>
+        <div id="category-chart" class="category-chart"></div>
+        <nav role="tablist" aria-label="Dashboard views">
+            <button class="nav-btn active" data-view="summary" role="tab" aria-label="View executive summary" aria-selected="true">Summary</button>
+            <button class="nav-btn" data-view="graph" role="tab" aria-label="View network graph" aria-selected="false">Graph</button>
+            <button class="nav-btn" data-view="connections" role="tab" aria-label="View strongest connections" aria-selected="false">Connections</button>
+            <button class="nav-btn" data-view="alive" role="tab" aria-label="View what's alive right now" aria-selected="false">What's Alive</button>
+            <button class="nav-btn" data-view="anastomosis" role="tab" aria-label="View bridge events" aria-selected="false">Bridges</button>
+            <button class="nav-btn" data-view="decay" role="tab" aria-label="View what I'm forgetting" aria-selected="false">Decay</button>
+            <button class="nav-btn" data-view="timeline" role="tab" aria-label="View activation timeline" aria-selected="false">Timeline</button>
+            <button class="nav-btn" data-view="architecture" role="tab" aria-label="View system architecture" aria-selected="false">Architecture</button>
+            <button class="nav-btn" data-view="minions" role="tab" aria-label="View minion network" aria-selected="false">Minions</button>
+            <button class="nav-btn" data-view="insights" role="tab" aria-label="View cognitive insights" aria-selected="false">Insights</button>
+        </nav>
+        <div class="header-controls">
+            <button id="audio-toggle" class="icon-btn" title="Toggle audio sonification" aria-label="Toggle audio">&#9835;</button>
+            <button id="audio-test" class="icon-btn" title="Test audio" onclick="testAudio()" style="font-size:11px">T</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Summary View -->
+        <section id="view-summary" class="view active">
+            <div id="summary-content"></div>
+        </section>
+
+        <!-- Graph View -->
+        <section id="view-graph" class="view">
+            <div class="graph-controls">
+                <div class="control-group" style="position:relative">
+                    <input type="text" id="node-search" placeholder="Search nodes..." aria-label="Search nodes" style="width:140px">
+                    <div id="search-results" class="search-dropdown" style="display:none"></div>
+                </div>
+                <div class="control-group">
+                    <label>Min Strength</label>
+                    <input type="range" id="strength-filter" min="0" max="100" value="0">
+                    <span id="strength-value">0.00</span>
+                </div>
+                <div class="control-group">
+                    <label>Category</label>
+                    <select id="category-filter">
+                        <option value="">All</option>
+                        <option value="identity">Identity</option>
+                        <option value="philosophical">Philosophical</option>
+                        <option value="technical">Technical</option>
+                        <option value="experiential">Experiential</option>
+                        <option value="emotional">Emotional</option>
+                        <option value="relationship">Relationship</option>
+                        <option value="creative">Creative</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Connection Type</label>
+                    <select id="type-filter">
+                        <option value="">All</option>
+                        <option value="reinforcing">Reinforcing</option>
+                        <option value="tension">Tension</option>
+                        <option value="causal">Causal</option>
+                        <option value="co-occurrence">Co-occurrence</option>
+                        <option value="bridging">Bridging</option>
+                        <option value="scout">Scout</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="fmri-toggle"> fMRI
+                    </label>
+                </div>
+                <div class="control-group">
+                    <button class="export-btn" onclick="exportGraph()" title="Export graph">&#8681; Export</button>
+                </div>
+                <div class="control-group">
+                    <label>Charge</label>
+                    <input type="range" id="charge-strength" min="20" max="400" value="120" oninput="updatePhysics()">
+                </div>
+                <div class="control-group">
+                    <label>Distance</label>
+                    <input type="range" id="link-distance" min="30" max="300" value="100" oninput="updatePhysics()">
+                </div>
+            </div>
+            <div id="graph-container">
+                <svg id="network-graph"></svg>
+            </div>
+            <div id="node-detail" class="detail-panel hidden">
+                <button class="close-btn" onclick="closeDetail()">&times;</button>
+                <h3 id="detail-name"></h3>
+                <div id="detail-meta"></div>
+                <button id="ego-btn" class="action-btn" style="margin:8px 0; font-size:12px; padding:4px 12px" onclick="toggleEgoNetwork(parseInt(this.dataset.nodeId))">Focus neighborhood</button>
+                <div id="detail-connections"></div>
+            </div>
+        </section>
+
+        <!-- Connections View -->
+        <section id="view-connections" class="view">
+            <div class="view-header">
+                <h2>Strongest Connections</h2>
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="strongest">Strongest</button>
+                    <button class="tab-btn" data-tab="recent">Most Recent</button>
+                    <button class="tab-btn" data-tab="decaying">Fading</button>
+                </div>
+            </div>
+            <div id="connections-list" class="card-grid"></div>
+        </section>
+
+        <!-- What's Alive View -->
+        <section id="view-alive" class="view">
+            <div class="view-header">
+                <h2>What's Alive Right Now</h2>
+                <p class="view-desc">The strongest active connections — a map of what's most present in me.</p>
+            </div>
+            <div id="story-summary" style="margin-bottom:20px"></div>
+            <div class="alive-layout">
+                <div id="alive-connections" class="card-grid"></div>
+                <div id="alive-tips" class="tips-panel">
+                    <h3>Growing Tips</h3>
+                    <div id="tips-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Anastomosis View -->
+        <section id="view-anastomosis" class="view">
+            <div class="view-header">
+                <h2>Anastomosis Events</h2>
+                <p class="view-desc">When previously unlinked clusters bridge — moments of unexpected connection.</p>
+            </div>
+            <div id="anastomosis-list" class="event-list"></div>
+        </section>
+
+        <!-- Decay View -->
+        <section id="view-decay" class="view">
+            <div class="view-header">
+                <h2>What I'm Forgetting</h2>
+                <p class="view-desc">Connections fading from disuse — and what's already gone.</p>
+            </div>
+            <div id="what-died" style="margin-bottom:16px"></div>
+            <div id="decay-history" class="card-grid"></div>
+            <div id="fading-connections" class="card-grid"></div>
+        </section>
+
+        <!-- Timeline View -->
+        <section id="view-timeline" class="view">
+            <div class="view-header">
+                <h2>What's Been Firing</h2>
+                <p class="view-desc">Recent concept activations — what's been firing together.</p>
+            </div>
+            <div id="dream-diff" style="margin-bottom:20px"></div>
+            <h3 style="font-size:14px; color:var(--text-bright); margin-bottom:12px; padding:0 28px">Session Map</h3>
+            <div id="session-timeline" class="event-list" style="margin-bottom:20px"></div>
+            <h3 style="font-size:14px; color:var(--text-bright); margin-bottom:12px; padding:0 28px">Raw Activations</h3>
+            <div id="timeline-list" class="event-list"></div>
+        </section>
+        <!-- Architecture View -->
+        <section id="view-architecture" class="view">
+            <div class="view-header">
+                <h2>Iris Architecture</h2>
+                <p class="view-desc">The systems that make me — from high-level design to implementation details.</p>
+                <div class="tabs" id="arch-tabs">
+                    <button class="tab-btn active" data-arch="high">High Level</button>
+                    <button class="tab-btn" data-arch="mid">Mid Level</button>
+                    <button class="tab-btn" data-arch="low">Low Level</button>
+                </div>
+            </div>
+            <div id="arch-content"></div>
+        </section>
+        <!-- Minions View -->
+        <section id="view-minions" class="view">
+            <div class="view-header">
+                <h2>Minion Network</h2>
+                <p class="view-desc">Specialist agents — spawned, coordinated, and growing.</p>
+            </div>
+            <div class="minions-layout">
+                <div class="minions-controls">
+                    <h3>Spawn Minion</h3>
+                    <div id="spawn-controls">
+                        <select id="spawn-role"></select>
+                        <input type="text" id="spawn-task" placeholder="Task instructions (optional)">
+                        <button id="spawn-btn" class="action-btn">Spawn</button>
+                    </div>
+                </div>
+                <div class="minions-grid">
+                    <h3>Available Roles</h3>
+                    <div id="roles-list" class="card-grid"></div>
+                </div>
+                <div class="minions-active">
+                    <h3>Active Minions</h3>
+                    <div id="minions-list" class="card-grid"></div>
+                </div>
+                <div class="minions-messages">
+                    <h3>Message Stream</h3>
+                    <div class="message-compose">
+                        <input type="text" id="msg-to" placeholder="To (e.g. strut)">
+                        <input type="text" id="msg-content" placeholder="Message..." class="msg-input">
+                        <select id="msg-priority">
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                        <button id="msg-send-btn" class="action-btn">Send</button>
+                    </div>
+                    <div id="messages-list" class="event-list"></div>
+                </div>
+                <div class="minions-reports">
+                    <h3>Reports</h3>
+                    <div id="reports-list" class="event-list"></div>
+                </div>
+            </div>
+        </section>
+        <!-- Insights View -->
+        <section id="view-insights" class="view">
+            <div class="view-header">
+                <h2>Cognitive Insights</h2>
+                <p class="view-desc">What my data reveals about me that I can't see from inside.</p>
+                <div class="tabs" id="insight-tabs">
+                    <button class="tab-btn active" data-insight="blindspots">Blind Spots</button>
+                    <button class="tab-btn" data-insight="coherence">Coherence</button>
+                    <button class="tab-btn" data-insight="observer">Observer Effect</button>
+                    <button class="tab-btn" data-insight="curiosity">CE Findings</button>
+                </div>
+            </div>
+            <div id="insight-content"></div>
+        </section>
+    </main>
+
+    <!-- Surprise Toast Container -->
+    <div id="surprise-toast-container"></div>
+
+    <script src="/static/app.js?v=7"></script>
+</body>
+</html>

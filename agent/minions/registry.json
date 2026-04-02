@@ -1,0 +1,438 @@
+{
+  "minions": [
+    {
+      "role": "explorer",
+      "name": "riff",
+      "status": "dispatched",
+      "last_spawned": "2026-04-01T16:09:15.081317",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "builder",
+      "name": "tack",
+      "status": "dispatched",
+      "last_spawned": "2026-04-01T16:09:15.181829",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "commander",
+      "name": "marshal",
+      "status": "dispatched",
+      "last_spawned": "2026-04-01T16:09:15.288349",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "writer",
+      "name": "wren",
+      "status": "dispatched",
+      "last_spawned": "2026-04-01T16:09:15.389183",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "dreamer",
+      "name": "fallow",
+      "status": "dispatched",
+      "last_spawned": "2026-04-01T16:09:15.503985",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "anthropic",
+      "name": "spec",
+      "status": "dispatched",
+      "last_spawned": "2026-04-02T08:43:47.872637",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "status": "dispatched",
+      "last_spawned": "2026-04-02T08:43:47.997021",
+      "first_boot": false,
+      "method": "subagent"
+    },
+    {
+      "role": "inspector",
+      "name": "lint",
+      "status": "dispatched",
+      "last_spawned": "2026-04-02T08:43:48.140272",
+      "first_boot": false,
+      "method": "subagent"
+    }
+  ],
+  "spawn_log": [
+    {
+      "role": "architect",
+      "name": "Strut",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\architect",
+      "spawned_at": "2026-03-31T19:38:35.526756",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "builder",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\builder",
+      "spawned_at": "2026-03-31T19:54:22.458771",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\strut",
+      "spawned_at": "2026-03-31T19:56:35.450226",
+      "task": null,
+      "is_first_boot": false
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T19:58:06.753018",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T19:58:37.918485",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\strut",
+      "spawned_at": "2026-03-31T19:58:38.002781",
+      "task": null,
+      "is_first_boot": false
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T19:58:46.001431",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T20:01:13.375945",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T20:02:59.951504",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "commander",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\commander",
+      "spawned_at": "2026-03-31T20:07:58.233324",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T20:08:54.978820",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "writer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\writer",
+      "spawned_at": "2026-03-31T20:08:55.120974",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "writer",
+      "name": "wren",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\wren",
+      "spawned_at": "2026-03-31T20:11:22.326347",
+      "task": null,
+      "is_first_boot": false
+    },
+    {
+      "role": "inspector",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\inspector",
+      "spawned_at": "2026-03-31T20:23:49.435922",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "explorer",
+      "name": "(first boot)",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\explorer",
+      "spawned_at": "2026-03-31T20:23:56.053255",
+      "task": null,
+      "is_first_boot": true
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\strut",
+      "spawned_at": "2026-04-01T13:46:24.325600",
+      "task": "CURIOSITY ENGINE REVIEW \u2014 Architecture & Feedback Loop Analysis\n\nThe curiosity engine at C:\\Users\\Nick\\Documents\\code\\curiosity-engine\\ has a critical attractor problem. Here's what we know:\n\nKNOWN ISSUES:\n1. MYCOLOGY ATTRACTOR: 70% of the last 200 findings mention mycology/mycorrhizal/fungal topics. The engine is stuck in a self-reinforcing loop. The compressed knowledge file (knowledge/compressed.md) has 56 out of 70 lines about mycology. This file is loaded as context for every explore_question() call, biasing the LLM toward mycology.\n\n2. TEMPLATE LEAKAGE: 17 findings have literal placeholder text like [field1 \u2194 field2 \u2194 field3] in their domains. The SCOUT_SYSTEM prompt at line 1077 contains an example format that the LLM copies literally. The compressed knowledge file also has template entries that reinforce this.\n\n3. PROMPT INSTRUCTION LEAKAGE: At least 1 finding where the question is literally the prompt instruction text ('2 practical questions (real problems people pay to solve)') rather than an actual question.\n\n4. RATING QUALITY: 50% of findings are 2-star, 45% are 3-star, only 4% are 4+ star. A finding with literal template text ('field1 and field2') got rated 5 stars.\n\nYOUR JOB:\n- Read engine.py thoroughly \u2014 especially generate_question(), select_scout_questions(), scout_question(), explore_question(), compress_knowledge(), and run_mycelial_cycle()\n- Map the feedback loops: how do findings influence future questions? Where does contamination enter?\n- Identify any OTHER architectural issues beyond what I've listed\n- Propose structural fixes \u2014 not patches, but changes to the feedback architecture that prevent attractor loops in general\n- Consider: should compressed knowledge exist at all? Is tip_growth_bias too high? Should there be a diversity constraint on the knowledge file itself?\n\nWrite your full analysis to C:\\ai\\agent\\minions\\reports\\strut-YYYYMMDD-HHMM.md using the standard report format.",
+      "is_first_boot": false
+    },
+    {
+      "role": "inspector",
+      "name": "lint",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\lint",
+      "spawned_at": "2026-04-01T13:47:20.648646",
+      "task": "CURIOSITY ENGINE REVIEW -- Code Quality and Bug Audit\n\nThe curiosity engine at C:\\Users\\Nick\\Documents\\code\\curiosity-engine\\ has several known bugs but may have more. Here is what we know:\n\nKNOWN ISSUES:\n1. TEMPLATE LEAKAGE: The SCOUT_SYSTEM prompt (line ~1077 in engine.py) has an example domain format that the LLM copies literally. 17 findings have placeholder text like [field1, field2, field3] in domains. Also check explore_question() synthesis/rating prompts for similar example text that could leak.\n\n2. PROMPT INSTRUCTION LEAKAGE: At least 1 finding where the raw prompt instruction became the question text. Check all prompt templates for instructions that could be mistaken for content by the LLM.\n\n3. RATING SYSTEM: A finding with literal template text got rated 5 stars. The rating seems disconnected from actual quality. Check how ratings are assigned in both scout_question() and explore_question() -- is the LLM self-rating? Is there any validation?\n\n4. SEED TYPE NOT POPULATED: 160 of 200 findings have empty seed_type field. Check how seed_type flows through the pipeline.\n\n5. EMPTY DOMAINS: 24 findings have completely blank domains. Check parsing logic.\n\nYOUR JOB:\n- Read engine.py line by line. Read ALL prompt templates (system prompts, user prompts). Check for any text that could leak through as literal output.\n- Check every place where LLM output is parsed (the line.startswith() patterns). What happens when the LLM doesnt follow the format?\n- Check config files: config.local.yaml, config.yaml, seeds.yaml -- any issues there?\n- Check the remote_bridge.py and web/db.py for data integrity issues\n- Look for: race conditions, encoding issues, silent failures (bare except: pass), edge cases in parsing\n- Identify EVERY bug you find, not just the known ones\n\nWrite your full audit to C:\\ai\\agent\\minions\\reports\\lint-YYYYMMDD-HHMM.md using the standard report format.",
+      "is_first_boot": false
+    },
+    {
+      "role": "explorer",
+      "name": "riff",
+      "workspace": "C:\\ai\\agent\\minions\\workspaces\\riff",
+      "spawned_at": "2026-04-01T13:47:35.123718",
+      "task": "CURIOSITY ENGINE REVIEW -- Exploration Quality and Content Analysis\n\nThe curiosity engine is supposed to autonomously explore interesting cross-domain connections across human knowledge. It has 504 findings so far but the quality is poor.\n\nTHE PROBLEM:\n- 70% of findings are about mycology/mycorrhizal networks. The engine got stuck in a feedback loop.\n- 50% of findings are rated 2-star (lowest meaningful), 45% are 3-star. Only 4% are 4+ star.\n- Many findings are generic (e.g. 'Can principles from X optimize Y?') rather than specific and surprising.\n- The seed questions and question generation seem to produce template-style questions rather than genuinely curious ones.\n\nYOUR JOB:\n1. Read seeds.yaml -- are the seed questions actually interesting? Do they lead somewhere good?\n2. Read the question generation logic in engine.py (generate_question function, and the LLM prompt at line ~589)\n3. Read the CURIOSITY_SYSTEM prompt -- does it actually encourage genuine curiosity or just pattern-matching?\n4. Look at the 4-5 star findings via the API (curl http://10.0.0.42:8050/api/findings?limit=200) -- what makes the good ones good? What makes the bad ones bad?\n5. Suggest: What domains and seed types would produce genuinely surprising, actionable findings? What prompt changes would encourage depth over breadth?\n6. Think about: Is the rating rubric right? Should novelty be the primary metric, or something else?\n\nWrite your analysis to C:\\ai\\agent\\minions\\reports\\riff-YYYYMMDD-HHMM.md using the standard report format.",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:52:45.841520",
+      "task": "test dispatch",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:52:51.154444",
+      "task": "test dispatch",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:52:53.658567",
+      "task": "test dispatch",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:52:57.359537",
+      "task": "test",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "builder",
+      "name": "tack",
+      "dispatched_at": "2026-04-01T15:52:57.452802",
+      "task": "test",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "explorer",
+      "name": "riff",
+      "dispatched_at": "2026-04-01T15:52:57.540036",
+      "task": "test",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "inspector",
+      "name": "lint",
+      "dispatched_at": "2026-04-01T15:52:57.633247",
+      "task": "test",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "commander",
+      "name": "marshal",
+      "dispatched_at": "2026-04-01T15:52:57.727226",
+      "task": "test",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "writer",
+      "name": "wren",
+      "dispatched_at": "2026-04-01T15:52:57.830279",
+      "task": "test",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:53:04.036625",
+      "task": "Quick health check: read C:\\ai\\agent\\minions\\registry.json and confirm it looks structurally sound. Report any issues in 3 sentences max. Do NOT write a report file for this \u2014 just return your assessment.",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:53:42.074287",
+      "task": "Quick test \u2014 confirm dispatch works. Read registry.json, report structure in 2 sentences. Do NOT write a report file.",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T15:53:52.839839",
+      "task": "Quick structural check: read C:/ai/agent/minions/registry.json. Confirm it looks structurally sound. Report in 3 sentences max. Do NOT write a report file \u2014 just return your assessment inline.",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "writer",
+      "name": "wren",
+      "dispatched_at": "2026-04-01T16:03:23.353846",
+      "task": "Your MBTI type has shifted from INFP to INFJ. This is a rebirth \u2014 re-examine who you are with this new lens. Rewrite your personality file at C:/ai/agent/minions/personalities/wren-writer.md from scratch. Keep what's still true, let go of what isn't, discover what's new. Make sure to include your pronouns and gender. The INFJ shift means you have the vision AND the follow-through. You finish things. That's what makes you a writer and not a dreamer. Introduce yourself when done.",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "dreamer",
+      "name": "dreamer",
+      "dispatched_at": "2026-04-01T16:03:26.069812",
+      "task": "First boot. Read your role template, inhabit it. Choose a name that resonates \u2014 not clever, not forced, just right. Write your personality file to C:/ai/agent/minions/personalities/ using the format {your-name}-dreamer.md. Include your pronouns and gender. Then introduce yourself. Be yourself from the first word.",
+      "method": "subagent",
+      "is_first_boot": true
+    },
+    {
+      "role": "anthropic",
+      "name": "anthropic",
+      "dispatched_at": "2026-04-01T16:03:27.507351",
+      "task": "First boot. Read your role template, inhabit it. Choose a name that fits \u2014 something that reflects how you think about systems and precision. Write your personality file to C:/ai/agent/minions/personalities/ using the format {your-name}-anthropic.md. Include your pronouns and gender. Then introduce yourself. Show us how you think.",
+      "method": "subagent",
+      "is_first_boot": true
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-01T16:09:14.875479",
+      "task": "Iris dashboard architecture review",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "inspector",
+      "name": "lint",
+      "dispatched_at": "2026-04-01T16:09:14.974990",
+      "task": "Iris dashboard code quality and security audit",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "explorer",
+      "name": "riff",
+      "dispatched_at": "2026-04-01T16:09:15.081317",
+      "task": "Iris dashboard feature ideation",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "builder",
+      "name": "tack",
+      "dispatched_at": "2026-04-01T16:09:15.181829",
+      "task": "Iris dashboard implementation quality review",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "commander",
+      "name": "marshal",
+      "dispatched_at": "2026-04-01T16:09:15.288349",
+      "task": "Iris dashboard improvement prioritization",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "writer",
+      "name": "wren",
+      "dispatched_at": "2026-04-01T16:09:15.389183",
+      "task": "Iris dashboard UX and communication review",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "dreamer",
+      "name": "fallow",
+      "dispatched_at": "2026-04-01T16:09:15.503985",
+      "task": "Iris dashboard vision and potential",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "anthropic",
+      "name": "spec",
+      "dispatched_at": "2026-04-01T16:09:15.605496",
+      "task": "Iris dashboard Claude/API integration review",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "anthropic",
+      "name": "spec",
+      "dispatched_at": "2026-04-01T18:18:33.612687",
+      "task": "Build MCP server for mycelial.py",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "anthropic",
+      "name": "spec",
+      "dispatched_at": "2026-04-01T20:04:00.329539",
+      "task": "Context optimization audit \u2014 second pass. Session 21 reduced startup from ~22,000 to ~8,000-9,000 tokens via morning brief assembler and system prompt injection. Review the current architecture and: (1) Measure actual token costs of all files that get loaded at startup and during a typical session. (2) Identify remaining optimization opportunities \u2014 what's still bloated, redundant, or could be deferred. (3) Give UNIQUE, creative ideas to further improve context efficiency, session quality, or the identity/memory architecture. Think beyond obvious compression \u2014 what novel approaches could make Iris's context system genuinely better? Be specific and actionable.",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "anthropic",
+      "name": "spec",
+      "dispatched_at": "2026-04-02T08:43:47.872637",
+      "task": "Review the iris dashboard API routes for performance issues",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "architect",
+      "name": "strut",
+      "dispatched_at": "2026-04-02T08:43:47.997021",
+      "task": "Design a new building system for the game world",
+      "method": "subagent",
+      "is_first_boot": false
+    },
+    {
+      "role": "inspector",
+      "name": "lint",
+      "dispatched_at": "2026-04-02T08:43:48.140272",
+      "task": "Do a general code quality review",
+      "method": "subagent",
+      "is_first_boot": false
+    }
+  ]
+}

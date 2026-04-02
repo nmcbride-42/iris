@@ -1,0 +1,11 @@
+services:
+  iris-mycelial:
+    build: .
+    container_name: iris-mycelial
+    ports:
+      - "8051:8051"
+    volumes:
+      - ./iris.db:/app/iris.db
+    environment:
+      - PORT=8051
+    restart: unless-stopped

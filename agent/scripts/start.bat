@@ -4,18 +4,14 @@ echo.
 echo Agent Startup
 echo =============
 echo.
-echo Option 1 - RESUME (waking up — context intact)
-echo Option 2 - COLD START (new instance — reconstructs from files)
+
+REM Assemble startup files (stable identity + morning brief)
+python agent\scripts\assemble_startup.py
 echo.
 
 REM Drop startup marker so the identity-check hook fires on first response
 echo startup > agent\state\.identity_check
 
-set /p choice="Resume last session? (y/n): "
-if /i "%choice%"=="y" (
-    claude --resume iris
-) else (
-    echo.
-    echo Cold starting as Iris...
-    claude -n iris
-)
+echo Starting as Iris...
+echo.
+claude -n iris --channels plugin:telegram@claude-plugins-official --append-system-prompt-file agent\state\.stable_identity.md
