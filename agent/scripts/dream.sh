@@ -62,7 +62,7 @@ After reviewing the session journal, activations, and identity files, identify c
 - Did the agent push back on something? → pushback
 
 For each group of enacted-but-missing concepts, inject them using:
-  python agent/mycelial/retroactive.py concept1 concept2 concept3 --session dream-DATESTAMP --context "Dream retroactive: brief description"
+  python agent/mycelial/retroactive.py concept1 concept2 concept3 --session dream-${DATESTAMP} --context "Dream retroactive: brief description"
 
 Group related concepts together in each call (e.g., all concepts from a single behavioral episode). Multiple calls are fine. Only inject concepts that genuinely appear enacted — do not inflate the network.
 

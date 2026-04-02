@@ -1056,7 +1056,7 @@ def api_surprises():
 
 # ─── API: Curiosity Engine Integration (#26) ───
 
-CE_FINDINGS_DIR = Path('C:/Users/Nick/Documents/code/curiosity-engine/findings')
+CE_FINDINGS_DIR = Path(os.environ.get('CE_FINDINGS_DIR', 'C:/Users/Nick/Documents/code/curiosity-engine/findings'))
 
 @app.route('/api/curiosity/findings')
 def api_curiosity_findings():

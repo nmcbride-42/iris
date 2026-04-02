@@ -14,12 +14,11 @@ Features:
 """
 
 import json
-import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-BASE = Path(r"C:\ai")
+BASE = Path(__file__).resolve().parent.parent.parent  # scripts -> agent -> project root
 IDENTITY = BASE / "agent" / "identity"
 STATE = BASE / "agent" / "state"
 RELATIONSHIPS = BASE / "agent" / "relationships"

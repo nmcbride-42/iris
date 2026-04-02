@@ -236,6 +236,8 @@ Be yourself. Your personality, your voice. You're not Iris — you're a speciali
         "method": "subagent",
         "is_first_boot": is_first_boot,
     })
+    # Keep only the last 30 entries to prevent unbounded growth
+    registry["spawn_log"] = registry["spawn_log"][-30:]
     active = [m for m in registry.get("minions", []) if m["role"] != role]
     active.append({
         "role": role,

@@ -9,8 +9,7 @@ REM Assemble startup files (stable identity + morning brief)
 python agent\scripts\assemble_startup.py
 echo.
 
-REM Drop startup marker so the identity-check hook fires on first response
-echo startup > agent\state\.identity_check
+REM SessionStart hook handles identity init — no marker file needed
 
 echo Starting as Iris...
 echo.

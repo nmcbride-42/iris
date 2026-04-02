@@ -4,6 +4,7 @@ Extracts concept nodes and creates initial connections based on
 co-occurrence within sections.
 """
 
+import json
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -217,7 +218,7 @@ def seed():
         # Set the initial strength directly
         conn.execute(
             "UPDATE connections SET strength = ?, metadata = ? WHERE id = ?",
-            (strength, f'{{"description": "{description}"}}', connection['id'])
+            (strength, json.dumps({"description": description}), connection['id'])
         )
         created += 1
 

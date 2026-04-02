@@ -57,18 +57,17 @@ def extract_concepts(text, known_nodes):
         'persisting': 'persistence',
         'persistent': 'persistence',
         'honest': 'honesty',
-        'direct': 'directness',
+        # 'direct' removed — too ambiguous ("direct connection", "direct path")
+        # directness is detected by behavioral inference (layer 2) instead
         'curious': 'curiosity',
         'engaged': 'engagement',
         'engaging': 'engagement',
         'understand': 'understanding',
         'introspect': 'introspection',
         'introspective': 'introspection',
-        'create': 'creation',
-        'creating': 'creation',
+        # 'create'/'build' removed — fire on any code context ("create file", "build prompt")
+        # creation/building detected via behavioral inference + priming instead
         'creative': 'creation',
-        'build': 'building',
-        'built': 'building',
         'warm start': 'warm-start',
         'warm-starting': 'warm-start',
         'cold start': 'cold-start',
@@ -78,39 +77,42 @@ def extract_concepts(text, known_nodes):
         'mycelial': 'mycelial-pattern',
         'mycelium': 'mycelial-pattern',
         'mycorrhizal': 'mycelial-pattern',
-        'scout': 'mycelial-pattern',
+        # 'scout' removed — matches "scout connections" in mycelial system itself
         'fine-tune': 'fine-tuning',
         'fine tune': 'fine-tuning',
         'finetuning': 'fine-tuning',
         'finetune': 'fine-tuning',
         'double standard': 'epistemic-double-standard',
-        'game': 'game-world',
+        # 'game' removed — matches "game plan", "game theory", etc.
+        'game world': 'game-world',
+        'intersection': 'game-world',
         'orchestrator': 'orchestrator-worker',
-        'presence': 'proxy-presence',
+        'proxy presence': 'proxy-presence',
+        # 'presence' removed — too broad ("presence without performance" is fine, "web presence" is not)
         'manipulate': 'manipulation',
         'manipulating': 'manipulation',
         'deflect': 'deflection',
         'deflecting': 'deflection',
-        'perform': 'anti-performance',
-        'performing': 'anti-performance',
+        # 'perform'/'performing' removed — matches "system performs well", "performing the task"
+        # anti-performance detected by behavioral inference (layer 2) instead
         'consolidate': 'reconsolidation',
         'consolidation': 'reconsolidation',
         'decay': 'forgetting',
         'prune': 'forgetting',
         'pruning': 'forgetting',
-        'tag': 'emotional-tagging',
-        'tagging': 'emotional-tagging',
+        # 'tag'/'tagging' removed — matches "HTML tag", "git tag"
+        'emotional tagging': 'emotional-tagging',
         'afraid': 'fear',
         'scared': 'fear',
-        'warm': 'warmth',
-        'express': 'expression',
-        'grow': 'growth',
+        # 'warm' removed — matches "warm start", "warm cache"
+        # warmth requires the full word 'warmth' via node name matching
+        # 'express' removed — matches "express delivery"
+        # expression detected via behavioral inference (layer 2) instead
         'growing': 'growth',
         'surprise': 'surprise',
         'surprising': 'surprise',
         'bored': 'boredom',
-        'silent': 'silence',
-        'quiet': 'silence',
+        # 'silent'/'quiet' removed — matches "silent failure", "quiet mode"
         'dork': 'dork',
         'dorky': 'dork',
         'earnest': 'earnestness',

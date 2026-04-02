@@ -21,10 +21,9 @@ import re
 sys.path.insert(0, os.path.dirname(__file__))
 from mycelial import (
     get_db, run_decay, promote_scouts, get_tip_growth_candidates,
-    get_network_stats, get_cognitive_state, process_co_occurrences,
-    get_or_create_node
+    get_network_stats, process_co_occurrences,
 )
-from hook import extract_concepts, run_hook
+from hook import extract_concepts
 
 
 def process_session_transcript(conn, transcript_path, session_name=None):
