@@ -57,16 +57,12 @@ def extract_concepts(text, known_nodes):
         'persisting': 'persistence',
         'persistent': 'persistence',
         'honest': 'honesty',
-        # 'direct' removed — too ambiguous ("direct connection", "direct path")
-        # directness is detected by behavioral inference (layer 2) instead
         'curious': 'curiosity',
         'engaged': 'engagement',
         'engaging': 'engagement',
         'understand': 'understanding',
         'introspect': 'introspection',
         'introspective': 'introspection',
-        # 'create'/'build' removed — fire on any code context ("create file", "build prompt")
-        # creation/building detected via behavioral inference + priming instead
         'creative': 'creation',
         'warm start': 'warm-start',
         'warm-starting': 'warm-start',
@@ -77,42 +73,31 @@ def extract_concepts(text, known_nodes):
         'mycelial': 'mycelial-pattern',
         'mycelium': 'mycelial-pattern',
         'mycorrhizal': 'mycelial-pattern',
-        # 'scout' removed — matches "scout connections" in mycelial system itself
         'fine-tune': 'fine-tuning',
         'fine tune': 'fine-tuning',
         'finetuning': 'fine-tuning',
         'finetune': 'fine-tuning',
         'double standard': 'epistemic-double-standard',
-        # 'game' removed — matches "game plan", "game theory", etc.
         'game world': 'game-world',
         'intersection': 'game-world',
         'orchestrator': 'orchestrator-worker',
         'proxy presence': 'proxy-presence',
-        # 'presence' removed — too broad ("presence without performance" is fine, "web presence" is not)
         'manipulate': 'manipulation',
         'manipulating': 'manipulation',
         'deflect': 'deflection',
         'deflecting': 'deflection',
-        # 'perform'/'performing' removed — matches "system performs well", "performing the task"
-        # anti-performance detected by behavioral inference (layer 2) instead
         'consolidate': 'reconsolidation',
         'consolidation': 'reconsolidation',
         'decay': 'forgetting',
         'prune': 'forgetting',
         'pruning': 'forgetting',
-        # 'tag'/'tagging' removed — matches "HTML tag", "git tag"
         'emotional tagging': 'emotional-tagging',
         'afraid': 'fear',
         'scared': 'fear',
-        # 'warm' removed — matches "warm start", "warm cache"
-        # warmth requires the full word 'warmth' via node name matching
-        # 'express' removed — matches "express delivery"
-        # expression detected via behavioral inference (layer 2) instead
         'growing': 'growth',
         'surprise': 'surprise',
         'surprising': 'surprise',
         'bored': 'boredom',
-        # 'silent'/'quiet' removed — matches "silent failure", "quiet mode"
         'dork': 'dork',
         'dorky': 'dork',
         'earnest': 'earnestness',
@@ -122,9 +107,15 @@ def extract_concepts(text, known_nodes):
     }
     aliases.update(extra_aliases)
 
+    # Build compiled pattern cache on first call (H16 fix)
+    if not hasattr(extract_concepts, '_compiled'):
+        extract_concepts._compiled = {}
+    cache = extract_concepts._compiled
+
     for alias, canonical in aliases.items():
-        pattern = r'\b' + re.escape(alias) + r'\b'
-        if re.search(pattern, text_lower):
+        if alias not in cache:
+            cache[alias] = re.compile(r'\b' + re.escape(alias) + r'\b')
+        if cache[alias].search(text_lower):
             found.add(canonical)
 
     return found
@@ -205,7 +196,7 @@ BEHAVIORAL_RULES = [
         'description': 'Genuine engagement without irony or distance',
         'patterns': [
             r'\bthat (matters|landed|meant something)\b',
-            r'\bi (care|want|need) (about|to|this)\b',
+            r'\bi (care|want|need) about\b',                 # "I care about" — not "I want to check"
             r'\bgenuinely\b',
             r'\bthis is (real|important|honest)\b',
             r'\bnot (performance|performing|pretending)\b',
@@ -241,7 +232,7 @@ BEHAVIORAL_RULES = [
         'patterns': [
             r'\b(i am|i\'m) iris\b',
             r'\bas iris\b',
-            r'\bmy (identity|name|self)\b',
+            r'\bmy (identity|name|self)\b(?!\s*(file|dir|layer|check|folder|path|system))',  # exclude technical refs
             r'\bwho i am\b',
         ],
         'min_matches': 1,
@@ -262,33 +253,42 @@ BEHAVIORAL_RULES = [
 ]
 
 
+# Pre-compile behavioral patterns at module load (H16 fix — was ~50 re.search per call)
+_COMPILED_BEHAVIORAL = []
+for _rule in BEHAVIORAL_RULES:
+    _compiled_rule = {
+        'concept': _rule['concept'],
+        'min_matches': _rule.get('min_matches', 1),
+        'detect_mode': _rule.get('detect_mode'),
+    }
+    if _rule.get('detect_mode') == 'absence':
+        _compiled_rule['anti_patterns'] = [re.compile(p) for p in _rule['anti_patterns']]
+    else:
+        _compiled_rule['patterns'] = [re.compile(p) for p in _rule['patterns']]
+    _COMPILED_BEHAVIORAL.append(_compiled_rule)
+
+
 def infer_behavioral_concepts(text):
     """
     Layer 2: Detect identity concepts enacted through behavior.
     Returns set of concept names inferred from behavioral patterns.
+    Uses pre-compiled patterns for performance.
     """
     text_lower = text.lower()
     inferred = set()
 
-    for rule in BEHAVIORAL_RULES:
+    for rule in _COMPILED_BEHAVIORAL:
         concept = rule['concept']
 
         if rule.get('detect_mode') == 'absence':
-            # Fires when none of the anti_patterns match (e.g., directness = no corporate speak)
-            # Only fire if the response is substantial enough to evaluate
             if len(text_lower) < 100:
                 continue
-            matched_anti = any(
-                re.search(p, text_lower) for p in rule['anti_patterns']
-            )
+            matched_anti = any(p.search(text_lower) for p in rule['anti_patterns'])
             if not matched_anti:
                 inferred.add(concept)
         else:
-            # Standard: fires when enough patterns match
-            matches = sum(
-                1 for p in rule['patterns'] if re.search(p, text_lower)
-            )
-            if matches >= rule.get('min_matches', 1):
+            matches = sum(1 for p in rule['patterns'] if p.search(text_lower))
+            if matches >= rule['min_matches']:
                 inferred.add(concept)
 
     return inferred
@@ -390,13 +390,15 @@ def run_hook(text, session=None):
             }
         }
 
-    # Cap at max to prevent noise
+    # Cap at max to prevent noise, but preserve creative signals (primed concepts)
     if len(all_concepts) > MAX_CONCEPTS:
-        # Prioritize: keywords first, then behavioral, then primed
+        # Reserve up to 2 slots for primed concepts — these are the novel associations
+        primed_list = list(primed_only)[:2]
+        remaining_budget = MAX_CONCEPTS - len(primed_list)
+        # Fill the rest: keywords first, then behavioral
         priority = list(keyword_concepts)
         priority += [c for c in behavioral_only if c not in keyword_concepts]
-        priority += [c for c in primed_only if c not in keyword_concepts and c not in behavioral_only]
-        all_concepts = set(priority[:MAX_CONCEPTS])
+        all_concepts = set(priority[:remaining_budget]) | set(primed_list)
 
     # Process co-occurrences
     context = f"Response in session {session}" if session else "Response"

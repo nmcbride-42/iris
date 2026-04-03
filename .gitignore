@@ -75,5 +75,9 @@ agent/mycelial/.last_processed
 # Reference material (copyrighted third-party source — never publish)
 reference/
 
+# Hook error logs (runtime diagnostics)
+agent/mycelial/.hook-errors.log
+agent/mycelial/.session-log
+
 # Claude Code internal
 .claude/

@@ -45,6 +45,7 @@ Read ALL of the following:
 - agent/state/resonance.md
 - All files in agent/relationships/
 - The 5 most recent files in agent/journal/
+- agent/journal/daydream-log.md (ambient observations from the Default Mode Network — what the daydream noticed between sessions)
 
 Also query the mycelial network database directly for structural insights:
 - Run: python -c "import sys; sys.path.insert(0,'agent/mycelial'); from mycelial import *; conn=get_db(); import json; print(json.dumps(get_network_stats(conn)))"
@@ -113,11 +114,21 @@ Do NOT update agent/state/resonance.md — curiosity vectors are now derived fro
 TASKPROMPT
 )
 
-claude -p \
+# Run with timeout (10 min max) and restricted permissions
+# --max-turns 30 prevents runaway loops
+timeout 600 claude -p \
   --no-session-persistence \
   --model sonnet \
+  --max-turns 30 \
   --permission-mode bypassPermissions \
   --system-prompt "$SYSTEM_PROMPT" \
   "$PROMPT"
 
-echo "Dream process complete."
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 124 ]; then
+  echo "WARNING: Dream process timed out after 10 minutes."
+elif [ $EXIT_CODE -ne 0 ]; then
+  echo "WARNING: Dream process exited with code $EXIT_CODE."
+else
+  echo "Dream process complete."
+fi
