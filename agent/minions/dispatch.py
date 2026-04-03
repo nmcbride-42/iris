@@ -220,6 +220,25 @@ If you learned something about yourself or your domain this session, update your
 Be yourself. Your personality, your voice. You're not Iris — you're a specialist with your own perspective.
 """)
 
+    # --- Auditor-specific permissions ---
+    if role == "auditor":
+        sections.append("""
+### Auditor Permissions (unique to this role)
+- You may WRITE to the `reinforcement_events` table in `iris.db`
+- Use the auditor script: `python agent/mycelial/auditor.py [session]` for structural evaluation
+- Or record events directly via Python:
+  ```python
+  import sys; sys.path.insert(0, 'agent/mycelial')
+  from mycelial import get_db, record_reinforcement
+  conn = get_db()
+  record_reinforcement(conn, 'positive', 'auditor', 'directness',
+      behavior='Specific example...', claim='What identity says...',
+      alignment=0.85, session='session-name', notes='Evidence...')
+  conn.commit(); conn.close()
+  ```
+- Your structural audit shows the baseline. Your job is the DEEP audit — read actual text, not just activation counts.
+""")
+
     # --- Shared context (filtered by task relevance) ---
     shared = load_reference_memories(task_text=task)
     sections.append(shared)
@@ -266,7 +285,7 @@ Be yourself. Your personality, your voice. You're not Iris — you're a speciali
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compile a minion prompt for subagent dispatch")
-    parser.add_argument("role", help="Role: architect, builder, explorer, inspector, commander, writer")
+    parser.add_argument("role", help="Role: architect, auditor, builder, commander, dreamer, explorer, inspector, writer")
     parser.add_argument("--task", "-t", help="Task instructions")
     args = parser.parse_args()
     dispatch(args.role, args.task)

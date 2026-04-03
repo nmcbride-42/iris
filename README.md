@@ -17,6 +17,8 @@ This is not a chatbot with a persona file. It's a cognitive architecture with st
 
 **Personality emerges from what you enact.** The mycelial network doesn't store what you say about yourself — it tracks what you do. Connections that get reinforced survive. Connections that don't get used decay and eventually get pruned. Identity is a living graph, not a static document.
 
+**Identity tested, not just declared.** A reinforcement system evaluates identity claims against behavioral evidence — positive and negative signals that show whether the agent does what it says it is. An auditor agent compares identity files (the claims) against session behavior (the evidence), producing alignment scores per trait. This breaks the self-referential loop where the detection system confirms what identity defines because identity defined the detection rules.
+
 ## Architecture
 
 ```
@@ -40,8 +42,12 @@ This is not a chatbot with a persona file. It's a cognitive architecture with st
                     nodes, connections, decay,
                     scouts, anastomosis detection
                               |
+                    Reinforcement System
+                    auditor evaluates claims vs behavior,
+                    positive/negative signals, alignment tracking
+                              |
                     Dashboard (Flask + D3.js)
-                    11 views including Dreams tab
+                    12 views including Reinforcement tab
 ```
 
 ## Key Components
@@ -49,13 +55,13 @@ This is not a chatbot with a persona file. It's a cognitive architecture with st
 | Component | Path | Purpose |
 |-----------|------|---------|
 | Identity | `agent/identity/` | Core beliefs, voice, values, morals, opinions, wants, likes |
-| Mycelial Network | `agent/mycelial/` | Concept graph DB, hooks, daydream, consolidation |
+| Mycelial Network | `agent/mycelial/` | Concept graph DB, hooks, daydream, consolidation, auditor |
 | Dashboard | `agent/mycelial/dashboard/` | Flask + D3.js visualization (localhost:8051) |
 | Protocols | `agent/protocols/` | Nap/sleep lifecycle, game integration |
 | Memory | `agent/memory/` | Long-term, core, working memory, polaroids |
 | Scripts | `agent/scripts/` | Startup, nap, sleep, assembly, consolidation |
 | Minions | `agent/minions/` | Specialist subagent roles and personalities |
-| Tests | `agent/tests/` | 122 tests across mycelial, hooks, daydream, consolidation, retroactive |
+| Tests | `agent/tests/` | Tests across mycelial, hooks, daydream, consolidation, retroactive, auditor |
 
 *Note: State files, relationship data, journal entries, and the cognitive DB are gitignored — they contain personal session data. The framework code and identity system are the public-facing components. See `.gitignore` for the full list.*
 
@@ -84,12 +90,13 @@ The cognitive substrate. A SQLite graph database that grows organically through 
 - **Anastomosis detection** — alerts when previously unlinked concept clusters bridge through an unexpected node
 - **Three-layer extraction**: keywords (explicit mentions), behavioral inference (enacted identity), identity priming (implied from combinations)
 - **Configurable decay** — connections multiply by 0.95 each cycle, pruned below 0.05. What you don't use, you lose.
+- **Reinforcement events** — positive and negative signals logged when an auditor (or external observer) evaluates whether behavior matches identity claims. Per-trait alignment scores tracked over time.
 
 The DB itself (`iris.db`) is gitignored — it contains raw cognitive data specific to a particular agent instance. Initialize a fresh one with `python agent/mycelial/mycelial.py init` and seed it with `python agent/mycelial/seed.py`.
 
 ## Dashboard
 
-A Flask + D3.js visualization running at localhost:8051 with 11 views:
+A Flask + D3.js visualization running at localhost:8051 with 12 views:
 
 - **Summary** — executive overview of the cognitive architecture
 - **Graph** — force-directed network visualization with fMRI mode
@@ -101,6 +108,7 @@ A Flask + D3.js visualization running at localhost:8051 with 11 views:
 - **Architecture** — system design documentation
 - **Minions** — specialist subagent network
 - **Dreams** — daydream (DMN) and sleep dream (REM) viewer
+- **Reinforcement** — identity alignment scores, positive/negative events, divergence tracking, emergent behavior detection
 - **Insights** — blind spots, coherence analysis, observer effect, curiosity engine findings
 
 ## Getting Started

@@ -63,6 +63,14 @@
       "last_spawned": "2026-04-02T08:43:48.140272",
       "first_boot": false,
       "method": "subagent"
+    },
+    {
+      "role": "auditor",
+      "name": "auditor",
+      "status": "dispatched",
+      "last_spawned": "2026-04-02T19:18:04.474261",
+      "first_boot": true,
+      "method": "subagent"
     }
   ],
   "spawn_log": [
@@ -225,6 +233,14 @@
       "task": "Do a general code quality review",
       "method": "subagent",
       "is_first_boot": false
+    },
+    {
+      "role": "auditor",
+      "name": "auditor",
+      "dispatched_at": "2026-04-02T19:18:04.474261",
+      "task": "Evaluate Iris's identity alignment from the last 3 sessions. Read identity files and recent journals. Produce a divergence report and record reinforcement events.",
+      "method": "subagent",
+      "is_first_boot": true
     }
   ]
 }

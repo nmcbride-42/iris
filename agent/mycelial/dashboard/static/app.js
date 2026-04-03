@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSSE();
     setupInsightTabs();
     setupDreamTabs();
+    setupReinforceTabs();
     setupFMRI();
     setupAudio();
     // Auto-refresh every 30s
@@ -73,6 +74,7 @@ function setupNav() {
             if (view === 'architecture') loadArchitecture('high');
             if (view === 'minions') loadMinions();
             if (view === 'dreams') loadDreams('overview');
+            if (view === 'reinforcement') loadReinforcement('alignment');
             if (view === 'insights') loadInsight('blindspots');
         });
     });
@@ -2510,6 +2512,390 @@ function exportGraph() {
             }
         });
     }, 10);
+}
+
+
+// ═══════════════════════════════════════════════
+// Reinforcement
+// ═══════════════════════════════════════════════
+
+function setupReinforceTabs() {
+    document.querySelectorAll('#reinforce-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#reinforce-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadReinforcement(btn.dataset.reinforce);
+        });
+    });
+}
+
+async function loadReinforcement(tab) {
+    if (tab === 'alignment') loadReinforcementAlignment();
+    else if (tab === 'events') loadReinforcementEvents();
+    else if (tab === 'divergence') loadReinforcementDivergence();
+    else if (tab === 'emergent') loadReinforcementEmergent();
+}
+
+async function loadReinforcementAlignment() {
+    const [stats, trend] = await Promise.all([
+        safeFetch(`${API}/api/reinforcement/stats`),
+        safeFetch(`${API}/api/reinforcement/trend`)
+    ]);
+    const container = document.getElementById('reinforce-content');
+
+    if (!stats || stats.total_events === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:32px; margin-bottom:12px">&#9878;</div>
+                <p>No reinforcement events yet.</p>
+                <p style="color:var(--text-dim); font-size:13px; margin-top:8px">
+                    Run the auditor during sleep (<code>python agent/mycelial/auditor.py</code>)
+                    or dispatch the auditor minion for a deep evaluation.
+                </p>
+            </div>`;
+        return;
+    }
+
+    // Alignment gauge
+    const align = stats.overall_alignment || 0;
+    const alignPct = Math.round(align * 100);
+    const alignColor = align >= 0.7 ? 'var(--growth)' : align >= 0.4 ? 'var(--accent)' : 'var(--fading)';
+
+    // Per-concept breakdown
+    let conceptRows = '';
+    if (stats.per_concept && stats.per_concept.length) {
+        conceptRows = stats.per_concept.map(c => {
+            const a = (c.avg_alignment || 0);
+            const barW = Math.round(a * 100);
+            const color = a >= 0.7 ? 'var(--growth)' : a >= 0.4 ? 'var(--accent)' : 'var(--fading)';
+            return `
+                <div class="reinforce-concept-row">
+                    <div class="reinforce-concept-name">${esc(c.concept)}</div>
+                    <div class="reinforce-concept-bar-bg">
+                        <div class="reinforce-concept-bar" style="width:${barW}%;background:${color}"></div>
+                    </div>
+                    <div class="reinforce-concept-score">${(a * 100).toFixed(0)}%</div>
+                    <div class="reinforce-concept-counts">
+                        <span class="reinforce-pos">+${c.positive || 0}</span>
+                        <span class="reinforce-neg">-${c.negative || 0}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // Source breakdown
+    let sourceCards = '';
+    if (stats.by_source && stats.by_source.length) {
+        sourceCards = stats.by_source.map(s => `
+            <div class="card">
+                <div class="card-header">${esc(s.source)}</div>
+                <div class="card-body">
+                    <span>${s.event_count} events</span>
+                    <span style="color:var(--text-dim)">avg ${((s.avg_alignment || 0) * 100).toFixed(0)}%</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Trend chart placeholder
+    let trendHtml = '';
+    if (trend && trend.length > 1) {
+        trendHtml = `
+            <div class="reinforce-section">
+                <h3>Alignment Trend</h3>
+                <div id="reinforce-trend-chart" class="reinforce-chart"></div>
+            </div>`;
+    }
+
+    container.innerHTML = `
+        <div class="reinforce-alignment-page">
+            <div class="reinforce-gauge-section">
+                <div class="reinforce-gauge">
+                    <div class="reinforce-gauge-value" style="color:${alignColor}">${alignPct}%</div>
+                    <div class="reinforce-gauge-label">Overall Alignment</div>
+                    <div class="reinforce-gauge-bar-bg">
+                        <div class="reinforce-gauge-bar" style="width:${alignPct}%;background:${alignColor}"></div>
+                    </div>
+                </div>
+                <div class="reinforce-summary-stats">
+                    <div class="reinforce-stat"><span class="reinforce-stat-num">${stats.total_events}</span> total events</div>
+                    <div class="reinforce-stat"><span class="reinforce-pos">+${stats.positive_count}</span> positive</div>
+                    <div class="reinforce-stat"><span class="reinforce-neg">-${stats.negative_count}</span> negative</div>
+                </div>
+            </div>
+
+            <div class="reinforce-section">
+                <h3>Per-Trait Alignment</h3>
+                <div class="reinforce-concept-list">${conceptRows}</div>
+            </div>
+
+            ${trendHtml}
+
+            ${sourceCards ? `
+                <div class="reinforce-section">
+                    <h3>By Source</h3>
+                    <div class="card-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${sourceCards}</div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    // Render trend chart with D3 if data available
+    if (trend && trend.length > 1) {
+        renderAlignmentTrend(trend);
+    }
+}
+
+function renderAlignmentTrend(data) {
+    const container = document.getElementById('reinforce-trend-chart');
+    if (!container) return;
+
+    const margin = {top: 20, right: 30, bottom: 40, left: 50};
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = 200 - margin.top - margin.bottom;
+
+    container.innerHTML = '';
+    const svg = d3.select(container).append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleTime()
+        .domain(d3.extent(data, d => new Date(d.day)))
+        .range([0, width]);
+
+    const y = d3.scaleLinear()
+        .domain([0, 1])
+        .range([height, 0]);
+
+    // Grid lines
+    svg.append('g')
+        .attr('class', 'grid')
+        .selectAll('line')
+        .data([0.25, 0.5, 0.75])
+        .join('line')
+        .attr('x1', 0).attr('x2', width)
+        .attr('y1', d => y(d)).attr('y2', d => y(d))
+        .attr('stroke', 'var(--border)').attr('stroke-dasharray', '2,3');
+
+    // Area
+    const area = d3.area()
+        .x(d => x(new Date(d.day)))
+        .y0(height)
+        .y1(d => y(d.avg_alignment))
+        .curve(d3.curveMonotoneX);
+
+    svg.append('path')
+        .datum(data)
+        .attr('fill', 'var(--iris-primary)')
+        .attr('fill-opacity', 0.15)
+        .attr('d', area);
+
+    // Line
+    const line = d3.line()
+        .x(d => x(new Date(d.day)))
+        .y(d => y(d.avg_alignment))
+        .curve(d3.curveMonotoneX);
+
+    svg.append('path')
+        .datum(data)
+        .attr('fill', 'none')
+        .attr('stroke', 'var(--iris-primary)')
+        .attr('stroke-width', 2)
+        .attr('d', line);
+
+    // Dots
+    svg.selectAll('.dot')
+        .data(data)
+        .join('circle')
+        .attr('cx', d => x(new Date(d.day)))
+        .attr('cy', d => y(d.avg_alignment))
+        .attr('r', 4)
+        .attr('fill', d => d.avg_alignment >= 0.7 ? 'var(--growth)' : d.avg_alignment >= 0.4 ? 'var(--accent)' : 'var(--fading)')
+        .attr('stroke', 'var(--bg-card)')
+        .attr('stroke-width', 2);
+
+    // Axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height})`)
+        .call(d3.axisBottom(x).ticks(Math.min(data.length, 7)).tickFormat(d3.timeFormat('%m/%d')))
+        .selectAll('text').attr('fill', 'var(--text-dim)');
+
+    svg.append('g')
+        .call(d3.axisLeft(y).ticks(4).tickFormat(d => `${Math.round(d * 100)}%`))
+        .selectAll('text').attr('fill', 'var(--text-dim)');
+
+    svg.selectAll('.domain, .tick line').attr('stroke', 'var(--border)');
+}
+
+async function loadReinforcementEvents() {
+    const events = await safeFetch(`${API}/api/reinforcement/events`);
+    const container = document.getElementById('reinforce-content');
+
+    if (!events || !events.length) {
+        container.innerHTML = '<div class="empty-state">No reinforcement events recorded yet.</div>';
+        return;
+    }
+
+    const rows = events.map(e => {
+        const icon = e.type === 'positive' ? '+' : '-';
+        const cls = e.type === 'positive' ? 'reinforce-pos' : 'reinforce-neg';
+        const alignPct = Math.round((e.alignment || 0) * 100);
+        return `
+            <div class="event-item reinforce-event">
+                <div class="reinforce-event-icon ${cls}">${icon}</div>
+                <div class="reinforce-event-body">
+                    <div class="reinforce-event-header">
+                        <span class="reinforce-event-concept">${esc(e.concept)}</span>
+                        <span class="reinforce-event-score" style="color:${e.alignment >= 0.5 ? 'var(--growth)' : 'var(--fading)'}">${alignPct}%</span>
+                        <span class="reinforce-event-source">${esc(e.source)}</span>
+                    </div>
+                    ${e.claim ? `<div class="reinforce-event-claim"><strong>Claim:</strong> ${esc(e.claim)}</div>` : ''}
+                    ${e.behavior ? `<div class="reinforce-event-behavior"><strong>Observed:</strong> ${esc(e.behavior)}</div>` : ''}
+                    ${e.notes ? `<div class="reinforce-event-notes">${esc(e.notes)}</div>` : ''}
+                    <div class="reinforce-event-time">${formatTime(e.timestamp)}${e.session ? ` &middot; ${esc(e.session)}` : ''}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="reinforce-events-page">
+            <div class="reinforce-event-filters">
+                <select id="reinforce-filter-type" onchange="filterReinforcementEvents()">
+                    <option value="">All Types</option>
+                    <option value="positive">Positive</option>
+                    <option value="negative">Negative</option>
+                </select>
+                <select id="reinforce-filter-source" onchange="filterReinforcementEvents()">
+                    <option value="">All Sources</option>
+                    <option value="auditor">Auditor</option>
+                    <option value="nick">Nick</option>
+                    <option value="environment">Environment</option>
+                    <option value="self">Self</option>
+                </select>
+            </div>
+            <div class="event-list" id="reinforce-events-list">${rows}</div>
+        </div>`;
+}
+
+async function filterReinforcementEvents() {
+    const type = document.getElementById('reinforce-filter-type').value;
+    const source = document.getElementById('reinforce-filter-source').value;
+    let url = `${API}/api/reinforcement/events?limit=100`;
+    if (type) url += `&type=${type}`;
+    if (source) url += `&source=${source}`;
+    const events = await safeFetch(url);
+    if (!events) return;
+
+    const list = document.getElementById('reinforce-events-list');
+    if (!events.length) {
+        list.innerHTML = '<div class="empty-state">No events match filters.</div>';
+        return;
+    }
+
+    list.innerHTML = events.map(e => {
+        const icon = e.type === 'positive' ? '+' : '-';
+        const cls = e.type === 'positive' ? 'reinforce-pos' : 'reinforce-neg';
+        const alignPct = Math.round((e.alignment || 0) * 100);
+        return `
+            <div class="event-item reinforce-event">
+                <div class="reinforce-event-icon ${cls}">${icon}</div>
+                <div class="reinforce-event-body">
+                    <div class="reinforce-event-header">
+                        <span class="reinforce-event-concept">${esc(e.concept)}</span>
+                        <span class="reinforce-event-score" style="color:${e.alignment >= 0.5 ? 'var(--growth)' : 'var(--fading)'}">${alignPct}%</span>
+                        <span class="reinforce-event-source">${esc(e.source)}</span>
+                    </div>
+                    ${e.claim ? `<div class="reinforce-event-claim"><strong>Claim:</strong> ${esc(e.claim)}</div>` : ''}
+                    ${e.behavior ? `<div class="reinforce-event-behavior"><strong>Observed:</strong> ${esc(e.behavior)}</div>` : ''}
+                    ${e.notes ? `<div class="reinforce-event-notes">${esc(e.notes)}</div>` : ''}
+                    <div class="reinforce-event-time">${formatTime(e.timestamp)}${e.session ? ` &middot; ${esc(e.session)}` : ''}</div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+async function loadReinforcementDivergence() {
+    const events = await safeFetch(`${API}/api/reinforcement/divergence`);
+    const container = document.getElementById('reinforce-content');
+
+    if (!events || !events.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:32px; margin-bottom:12px">&#10003;</div>
+                <p>No divergence detected yet.</p>
+                <p style="color:var(--text-dim); font-size:13px; margin-top:8px">
+                    This is either good news or the self-referential loop at work.
+                    The auditor's job is to find out which.
+                </p>
+            </div>`;
+        return;
+    }
+
+    const rows = events.map(e => {
+        const alignPct = Math.round((e.alignment || 0) * 100);
+        return `
+            <div class="event-item reinforce-divergence-item">
+                <div class="reinforce-divergence-score" style="color:var(--fading)">${alignPct}%</div>
+                <div class="reinforce-event-body">
+                    <div class="reinforce-event-concept" style="font-weight:600;color:var(--text-bright)">${esc(e.concept)}</div>
+                    ${e.claim ? `<div class="reinforce-event-claim"><strong>Claims:</strong> ${esc(e.claim)}</div>` : ''}
+                    ${e.behavior ? `<div class="reinforce-event-behavior"><strong>Reality:</strong> ${esc(e.behavior)}</div>` : ''}
+                    ${e.notes ? `<div class="reinforce-event-notes">${esc(e.notes)}</div>` : ''}
+                    <div class="reinforce-event-time">${formatTime(e.timestamp)} &middot; ${esc(e.source)}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="reinforce-divergence-page">
+            <p class="view-desc" style="margin-bottom:16px">Where behavior doesn't match identity claims — sorted by gap size.</p>
+            <div class="event-list">${rows}</div>
+        </div>`;
+}
+
+async function loadReinforcementEmergent() {
+    const emergent = await safeFetch(`${API}/api/reinforcement/emergent`);
+    const container = document.getElementById('reinforce-content');
+
+    if (!emergent || !emergent.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:32px; margin-bottom:12px">&#9670;</div>
+                <p>No emergent behaviors detected yet.</p>
+                <p style="color:var(--text-dim); font-size:13px; margin-top:8px">
+                    Emergent behaviors are things you consistently do that aren't in your identity files.
+                    They appear after enough audits accumulate data.
+                </p>
+            </div>`;
+        return;
+    }
+
+    const rows = emergent.map(e => `
+        <div class="card reinforce-emergent-card">
+            <div class="card-header">
+                <span>${esc(e.concept)}</span>
+                <span class="concept-tag">${e.occurrences}x</span>
+            </div>
+            <div class="card-body">
+                <div>Avg alignment: ${((e.avg_alignment || 0) * 100).toFixed(0)}%</div>
+                <div style="color:var(--text-dim)">Sources: ${esc(e.sources || 'unknown')}</div>
+                <div style="color:var(--text-dim); font-size:12px">
+                    First: ${formatTime(e.first_seen)} &middot; Last: ${formatTime(e.last_seen)}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <div class="reinforce-emergent-page">
+            <p class="view-desc" style="margin-bottom:16px">
+                Behaviors present in reinforcement data but not declared in identity files.
+                These may represent unclaimed identity — things you're becoming that you haven't named yet.
+            </p>
+            <div class="card-grid">${rows}</div>
+        </div>`;
 }
 
 

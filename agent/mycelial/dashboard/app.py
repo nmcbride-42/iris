@@ -22,7 +22,9 @@ from mycelial import (
     get_cognitive_state, get_tip_growth_candidates, run_decay, promote_scouts,
     process_co_occurrences, get_or_create_node, DB_PATH,
     get_decaying_connections, get_recent_activations, get_decay_history,
-    get_anastomosis_events, get_scout_connections, get_category_stats
+    get_anastomosis_events, get_scout_connections, get_category_stats,
+    get_reinforcement_events, get_reinforcement_stats, get_alignment_trend,
+    get_emergent_behaviors,
 )
 from pathlib import Path
 from contextlib import contextmanager
@@ -1420,6 +1422,61 @@ def api_dream_stats():
         'network_snapshot': daydream_lock.get('network_snapshot'),
         'last_sleep_dream': sleep_dreams[0]['date'] if sleep_dreams else None,
     })
+
+
+# ─── Reinforcement API ───
+
+@app.route('/api/reinforcement/stats')
+def api_reinforcement_stats():
+    """Overall reinforcement stats — alignment, counts, per-concept breakdown."""
+    with db_connection() as conn:
+        stats = get_reinforcement_stats(conn)
+    return jsonify(stats)
+
+
+@app.route('/api/reinforcement/events')
+def api_reinforcement_events():
+    """Reinforcement event timeline, optionally filtered."""
+    concept = request.args.get('concept')
+    event_type = request.args.get('type')
+    source = request.args.get('source')
+    limit = safe_int(request.args.get('limit'), 100)
+    with db_connection() as conn:
+        events = get_reinforcement_events(conn, limit=limit, concept=concept,
+                                          event_type=event_type, source=source)
+    return jsonify([dict(e) for e in events])
+
+
+@app.route('/api/reinforcement/trend')
+def api_reinforcement_trend():
+    """Alignment trend over time, bucketed by day."""
+    days = safe_int(request.args.get('days'), 30)
+    with db_connection() as conn:
+        trend = get_alignment_trend(conn, days=days)
+    return jsonify([dict(t) for t in trend])
+
+
+@app.route('/api/reinforcement/divergence')
+def api_reinforcement_divergence():
+    """Events with lowest alignment — where behavior diverges from claims."""
+    limit = safe_int(request.args.get('limit'), 25)
+    with db_connection() as conn:
+        events = conn.execute("""
+            SELECT * FROM reinforcement_events
+            WHERE type = 'negative'
+            ORDER BY alignment ASC, timestamp DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+    return jsonify([dict(e) for e in events])
+
+
+@app.route('/api/reinforcement/emergent')
+def api_reinforcement_emergent():
+    """Behaviors present in reinforcement data but not core identity traits."""
+    min_occ = safe_int(request.args.get('min'), 2)
+    with db_connection() as conn:
+        emergent = get_emergent_behaviors(conn, min_occurrences=min_occ)
+    return jsonify([dict(e) for e in emergent])
 
 
 if __name__ == '__main__':

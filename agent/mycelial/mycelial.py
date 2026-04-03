@@ -601,6 +601,123 @@ def get_graph_data(conn, min_strength=0.0, category=None, conn_type=None):
     }
 
 
+# ─── Reinforcement Events ───
+
+def record_reinforcement(conn, event_type, source, concept, behavior=None,
+                         claim=None, alignment=0.5, session=None, notes=None):
+    """Record a reinforcement event — positive or negative signal about identity alignment.
+    Does NOT commit — caller manages transaction."""
+    conn.execute(
+        """INSERT INTO reinforcement_events
+           (type, source, concept, behavior, claim, alignment, session, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (event_type, source, concept, behavior, claim, alignment, session, notes)
+    )
+
+
+def get_reinforcement_events(conn, limit=50, concept=None, event_type=None, source=None):
+    """Query reinforcement events with optional filters."""
+    sql = "SELECT * FROM reinforcement_events WHERE 1=1"
+    params = []
+    if concept:
+        sql += " AND concept = ?"
+        params.append(concept)
+    if event_type:
+        sql += " AND type = ?"
+        params.append(event_type)
+    if source:
+        sql += " AND source = ?"
+        params.append(source)
+    sql += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+    return conn.execute(sql, params).fetchall()
+
+
+def get_reinforcement_stats(conn):
+    """Aggregate reinforcement stats — overall and per-concept alignment."""
+    total = conn.execute(
+        "SELECT COUNT(*) as cnt FROM reinforcement_events"
+    ).fetchone()['cnt']
+
+    if total == 0:
+        return {'total_events': 0, 'overall_alignment': None,
+                'positive_count': 0, 'negative_count': 0,
+                'per_concept': [], 'by_source': []}
+
+    overall = conn.execute(
+        "SELECT AVG(alignment) as avg_align FROM reinforcement_events"
+    ).fetchone()['avg_align']
+
+    positive = conn.execute(
+        "SELECT COUNT(*) as cnt FROM reinforcement_events WHERE type = 'positive'"
+    ).fetchone()['cnt']
+
+    negative = conn.execute(
+        "SELECT COUNT(*) as cnt FROM reinforcement_events WHERE type = 'negative'"
+    ).fetchone()['cnt']
+
+    per_concept = conn.execute("""
+        SELECT concept,
+               COUNT(*) as event_count,
+               AVG(alignment) as avg_alignment,
+               SUM(CASE WHEN type = 'positive' THEN 1 ELSE 0 END) as positive,
+               SUM(CASE WHEN type = 'negative' THEN 1 ELSE 0 END) as negative
+        FROM reinforcement_events
+        GROUP BY concept
+        ORDER BY event_count DESC
+    """).fetchall()
+
+    by_source = conn.execute("""
+        SELECT source,
+               COUNT(*) as event_count,
+               AVG(alignment) as avg_alignment
+        FROM reinforcement_events
+        GROUP BY source
+        ORDER BY event_count DESC
+    """).fetchall()
+
+    return {
+        'total_events': total,
+        'overall_alignment': round(overall, 3) if overall else None,
+        'positive_count': positive,
+        'negative_count': negative,
+        'per_concept': [dict(r) for r in per_concept],
+        'by_source': [dict(r) for r in by_source]
+    }
+
+
+def get_alignment_trend(conn, days=30):
+    """Get alignment scores bucketed by day over the last N days."""
+    return conn.execute("""
+        SELECT date(timestamp) as day,
+               AVG(alignment) as avg_alignment,
+               COUNT(*) as event_count,
+               SUM(CASE WHEN type = 'positive' THEN 1 ELSE 0 END) as positive,
+               SUM(CASE WHEN type = 'negative' THEN 1 ELSE 0 END) as negative
+        FROM reinforcement_events
+        WHERE timestamp >= datetime('now', ?)
+        GROUP BY date(timestamp)
+        ORDER BY day ASC
+    """, (f'-{days} days',)).fetchall()
+
+
+def get_emergent_behaviors(conn, min_occurrences=3):
+    """Find concepts that appear frequently in reinforcement but aren't core identity traits.
+    Returns concepts with high event counts that may represent unclaimed identity."""
+    return conn.execute("""
+        SELECT concept,
+               COUNT(*) as occurrences,
+               AVG(alignment) as avg_alignment,
+               GROUP_CONCAT(DISTINCT source) as sources,
+               MIN(timestamp) as first_seen,
+               MAX(timestamp) as last_seen
+        FROM reinforcement_events
+        GROUP BY concept
+        HAVING occurrences >= ?
+        ORDER BY occurrences DESC
+    """, (min_occurrences,)).fetchall()
+
+
 # ─── Startup Query ───
 
 def get_cognitive_state(conn, top_n=25):

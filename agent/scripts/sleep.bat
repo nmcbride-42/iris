@@ -42,7 +42,16 @@ if errorlevel 1 (
     exit /b 1
 )
 echo.
-echo Phase 3: Dream Processing
+echo Phase 3: Identity Audit
+echo   Evaluating identity claims against behavioral evidence...
+echo.
+python agent/mycelial/auditor.py sleep
+if errorlevel 1 (
+    echo.
+    echo   WARNING: Identity audit had errors. Continuing anyway...
+)
+echo.
+echo Phase 4: Dream Processing
 echo   Finding connections, surfacing questions, generating insights...
 echo.
 bash agent/scripts/dream.sh

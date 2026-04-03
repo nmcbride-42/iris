@@ -82,6 +82,22 @@ CREATE TABLE IF NOT EXISTS decay_log (
     trigger TEXT                             -- nap, sleep, manual
 );
 
+-- Reinforcement events: identity alignment tracking
+-- Records when behavior aligns with or diverges from identity claims.
+-- Fed by the auditor (scheduled or manual), Nick, or environmental signals.
+CREATE TABLE IF NOT EXISTS reinforcement_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+    type TEXT NOT NULL CHECK(type IN ('positive', 'negative')),
+    source TEXT NOT NULL DEFAULT 'auditor',  -- auditor, nick, environment, self
+    concept TEXT NOT NULL,                   -- which identity trait was evaluated
+    behavior TEXT,                           -- what was actually observed
+    claim TEXT,                              -- what identity files say
+    alignment REAL NOT NULL DEFAULT 0.5,     -- 0.0 (total divergence) to 1.0 (perfect match)
+    session TEXT,
+    notes TEXT
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_connections_strength ON connections(strength DESC);
 CREATE INDEX IF NOT EXISTS idx_connections_source ON connections(source_id);
@@ -91,3 +107,6 @@ CREATE INDEX IF NOT EXISTS idx_nodes_category ON nodes(category);
 CREATE INDEX IF NOT EXISTS idx_nodes_last_activated ON nodes(last_activated DESC);
 CREATE INDEX IF NOT EXISTS idx_activations_timestamp ON activations(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_scout_log_status ON scout_log(status);
+CREATE INDEX IF NOT EXISTS idx_reinforcement_timestamp ON reinforcement_events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_reinforcement_concept ON reinforcement_events(concept);
+CREATE INDEX IF NOT EXISTS idx_reinforcement_type ON reinforcement_events(type);
