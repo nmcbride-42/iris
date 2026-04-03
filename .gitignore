@@ -37,6 +37,9 @@ nul
 # Minion workspaces (transient, contain worktree .git dirs)
 agent/minions/workspaces/
 
+# Minion reports (may contain secrets discovered during security audits)
+agent/minions/reports/
+
 # Reference material (copyrighted third-party source — never publish)
 reference/
 
