@@ -40,6 +40,38 @@ agent/minions/workspaces/
 # Minion reports (may contain secrets discovered during security audits)
 agent/minions/reports/
 
+# Minion messages DB (internal comms)
+agent/minions/messages.db
+
+# Relationship files (personal — private interaction history)
+agent/relationships/nick.md
+agent/relationships/nick-log.md
+agent/relationships/nick-history.md
+
+# Journal entries (personal — session reflections, dream logs)
+agent/journal/
+
+# State files (session-specific — contain infrastructure details, IPs, emotional state)
+agent/state/current.md
+agent/state/warmstart.md
+agent/state/resonance.md
+agent/state/resonance-history.md
+agent/state/needs.md
+
+# Working memory (ephemeral, may contain sensitive context)
+agent/memory/working/
+
+# Specific memory files with personal content
+agent/memory/long-term/lt-021-nick-anthropic-application.md
+
+# Cognitive DB (full network — raw activation data)
+agent/mycelial/iris.db
+agent/mycelial/.daydream-lock
+agent/mycelial/.last_processed
+
+# MCP config (local paths and server details)
+.mcp.json
+
 # Reference material (copyrighted third-party source — never publish)
 reference/
 
