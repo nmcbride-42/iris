@@ -1479,6 +1479,111 @@ def api_reinforcement_emergent():
     return jsonify([dict(e) for e in emergent])
 
 
+# ─── Research API ───
+
+CE_API = os.environ.get('CE_API', 'http://10.0.0.42:8050')
+RESEARCH_DIR = Path(__file__).parent.parent.parent / 'research'
+SEED_LOG = RESEARCH_DIR / 'seed-log.md'
+
+
+def _ce_fetch(path, params=None):
+    """Fetch from the Curiosity Engine API. Returns None on failure."""
+    try:
+        import requests
+        resp = requests.get(f"{CE_API}{path}", params=params, timeout=8)
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        pass
+    return None
+
+
+def _parse_seed_log():
+    """Parse the seed log into structured entries."""
+    if not SEED_LOG.exists():
+        return []
+    entries = []
+    current = None
+    try:
+        for line in SEED_LOG.read_text(encoding='utf-8').split('\n'):
+            line = line.rstrip()
+            if line.startswith('## '):
+                if current:
+                    entries.append(current)
+                current = {'timestamp': line[3:].split(' — ')[0].strip(),
+                           'type': line.split(' — ')[-1].strip() if ' — ' in line else 'seed',
+                           'questions': []}
+            elif line.startswith('- ') and current:
+                current['questions'].append(line[2:].strip())
+            elif line.startswith('  Source:') and current and current['questions']:
+                pass  # skip source lines
+        if current:
+            entries.append(current)
+    except (OSError, UnicodeDecodeError):
+        pass
+    entries.reverse()  # most recent first
+    return entries
+
+
+@app.route('/api/research/overview')
+def api_research_overview():
+    """Research tab overview — seed log + CE status."""
+    seed_log = _parse_seed_log()
+    total_seeded = sum(len(e['questions']) for e in seed_log)
+
+    # Try to get CE queue and findings
+    ce_queue = _ce_fetch('/api/queue', {'status': 'pending', 'limit': 100})
+    ce_findings = _ce_fetch('/api/findings', {'limit': 100})
+
+    iris_queued = 0
+    iris_findings = []
+    if ce_queue and 'items' in ce_queue:
+        iris_queued = sum(1 for i in ce_queue['items'] if i.get('seed_type') == 'iris')
+    if ce_findings and 'findings' in ce_findings:
+        iris_findings = [f for f in ce_findings['findings'] if f.get('seed_type') == 'iris']
+
+    # Count synthesis artifacts
+    synthesis_count = 0
+    if RESEARCH_DIR.exists():
+        synthesis_count = len([f for f in RESEARCH_DIR.glob('*.md')
+                              if f.name != 'seed-log.md'])
+
+    return jsonify({
+        'total_seeded': total_seeded,
+        'in_queue': iris_queued,
+        'findings_count': len(iris_findings),
+        'synthesis_count': synthesis_count,
+        'ce_online': ce_queue is not None,
+        'recent_seeds': seed_log[:5],
+    })
+
+
+@app.route('/api/research/queue')
+def api_research_queue():
+    """Iris-seeded questions currently in CE queue."""
+    ce_queue = _ce_fetch('/api/queue', {'status': 'pending', 'limit': 100})
+    if not ce_queue or 'items' not in ce_queue:
+        return jsonify({'items': [], 'ce_online': False})
+    iris_items = [i for i in ce_queue['items'] if i.get('seed_type') == 'iris']
+    return jsonify({'items': iris_items, 'ce_online': True})
+
+
+@app.route('/api/research/findings')
+def api_research_findings():
+    """CE findings from iris-seeded questions."""
+    ce_findings = _ce_fetch('/api/findings', {'limit': 100})
+    if not ce_findings or 'findings' not in ce_findings:
+        return jsonify({'findings': [], 'ce_online': False})
+    iris_findings = [f for f in ce_findings['findings'] if f.get('seed_type') == 'iris']
+    return jsonify({'findings': iris_findings, 'ce_online': True})
+
+
+@app.route('/api/research/seeds')
+def api_research_seeds():
+    """Full seed log history."""
+    return jsonify(_parse_seed_log())
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8051))
     app.run(host='127.0.0.1', port=port, debug=False)

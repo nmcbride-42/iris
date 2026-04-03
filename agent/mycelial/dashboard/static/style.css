@@ -2043,6 +2043,181 @@ h1 {
 }
 
 /* ═══════════════════════════════════════════════
+   Research
+   ═══════════════════════════════════════════════ */
+
+.research-overview-page,
+.research-queue-page,
+.research-findings-page,
+.research-seeds-page {
+    padding: 20px 28px;
+    max-width: 900px;
+}
+
+.research-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.research-ce-status {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.research-pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 32px;
+    padding: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.research-pipeline-step {
+    text-align: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    min-width: 130px;
+    opacity: 0.4;
+    transition: opacity 0.3s;
+}
+
+.research-pipeline-step.active {
+    opacity: 1;
+    border-color: var(--iris-dim);
+    background: var(--iris-ghost);
+}
+
+.research-pipeline-icon {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--iris);
+    margin-bottom: 4px;
+}
+
+.research-pipeline-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+.research-pipeline-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+.research-pipeline-arrow {
+    font-size: 20px;
+    color: var(--text-whisper);
+    flex-shrink: 0;
+}
+
+.research-section {
+    margin-bottom: 28px;
+}
+
+.research-section h3 {
+    font-size: 14px;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+}
+
+.research-question {
+    font-size: 14px;
+    color: var(--text-bright);
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+.research-seed-entry {
+    border-left: 3px solid var(--iris-dim);
+}
+
+/* Queue items */
+.research-queue-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.research-queue-priority {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--iris);
+    min-width: 40px;
+    text-align: center;
+    font-family: monospace;
+}
+
+.research-queue-body {
+    flex: 1;
+}
+
+.research-queue-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+
+/* Finding cards */
+.research-finding-card {
+    margin-bottom: 16px;
+    padding: 16px;
+}
+
+.research-finding-rating {
+    color: var(--gold);
+    font-size: 14px;
+}
+
+.research-finding-question {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 8px 0;
+    line-height: 1.4;
+}
+
+.research-finding-domains {
+    font-size: 12px;
+    color: var(--teal);
+    margin-bottom: 8px;
+}
+
+.research-finding-synthesis {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.research-finding-hypothesis {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.research-finding-meta {
+    font-size: 11px;
+    color: var(--text-whisper);
+}
+
+/* ═══════════════════════════════════════════════
    Reinforcement
    ═══════════════════════════════════════════════ */
 

@@ -26,6 +26,7 @@
             <button class="nav-btn" data-view="architecture" role="tab" aria-label="View system architecture" aria-selected="false">Architecture</button>
             <button class="nav-btn" data-view="minions" role="tab" aria-label="View minion network" aria-selected="false">Minions</button>
             <button class="nav-btn" data-view="dreams" role="tab" aria-label="View dreaming activity" aria-selected="false">Dreams</button>
+            <button class="nav-btn" data-view="research" role="tab" aria-label="View Iris research" aria-selected="false">Research</button>
             <button class="nav-btn" data-view="reinforcement" role="tab" aria-label="View reinforcement signals" aria-selected="false">Reinforcement</button>
             <button class="nav-btn" data-view="insights" role="tab" aria-label="View cognitive insights" aria-selected="false">Insights</button>
         </nav>
@@ -276,6 +277,21 @@
             <div id="dream-content"></div>
         </section>
 
+        <!-- Research View -->
+        <section id="view-research" class="view">
+            <div class="view-header">
+                <h2>Research</h2>
+                <p class="view-desc">Iris-driven research through the Curiosity Engine. Questions seeded from my own interests, findings synthesized into knowledge.</p>
+                <div class="tabs" id="research-tabs">
+                    <button class="tab-btn active" data-research="overview">Overview</button>
+                    <button class="tab-btn" data-research="queue">In Queue</button>
+                    <button class="tab-btn" data-research="findings">Findings</button>
+                    <button class="tab-btn" data-research="seeds">Seed History</button>
+                </div>
+            </div>
+            <div id="research-content"></div>
+        </section>
+
         <!-- Reinforcement View -->
         <section id="view-reinforcement" class="view">
             <div class="view-header">
@@ -310,6 +326,6 @@
     <!-- Surprise Toast Container -->
     <div id="surprise-toast-container"></div>
 
-    <script src="/static/app.js?v=11"></script>
+    <script src="/static/app.js?v=12"></script>
 </body>
 </html>

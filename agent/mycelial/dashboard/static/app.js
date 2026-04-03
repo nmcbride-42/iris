@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupInsightTabs();
     setupDreamTabs();
     setupReinforceTabs();
+    setupResearchTabs();
     setupFMRI();
     setupAudio();
     // Auto-refresh every 30s
@@ -74,6 +75,7 @@ function setupNav() {
             if (view === 'architecture') loadArchitecture('high');
             if (view === 'minions') loadMinions();
             if (view === 'dreams') loadDreams('overview');
+            if (view === 'research') loadResearch('overview');
             if (view === 'reinforcement') loadReinforcement('alignment');
             if (view === 'insights') loadInsight('blindspots');
         });
@@ -2512,6 +2514,224 @@ function exportGraph() {
             }
         });
     }, 10);
+}
+
+
+// ═══════════════════════════════════════════════
+// Research
+// ═══════════════════════════════════════════════
+
+function setupResearchTabs() {
+    document.querySelectorAll('#research-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#research-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadResearch(btn.dataset.research);
+        });
+    });
+}
+
+async function loadResearch(tab) {
+    if (tab === 'overview') loadResearchOverview();
+    else if (tab === 'queue') loadResearchQueue();
+    else if (tab === 'findings') loadResearchFindings();
+    else if (tab === 'seeds') loadResearchSeeds();
+}
+
+async function loadResearchOverview() {
+    const data = await safeFetch(`${API}/api/research/overview`);
+    const container = document.getElementById('research-content');
+
+    if (!data) {
+        container.innerHTML = '<div class="empty-state">Could not load research data.</div>';
+        return;
+    }
+
+    const ceStatus = data.ce_online
+        ? '<span style="color:var(--alive)">online</span>'
+        : '<span style="color:var(--fading)">offline</span>';
+
+    // Recent seeds
+    let seedsHtml = '';
+    if (data.recent_seeds && data.recent_seeds.length) {
+        seedsHtml = data.recent_seeds.map(s => `
+            <div class="event-item research-seed-entry">
+                <div class="event-time">${esc(s.timestamp)}</div>
+                <div class="event-content">
+                    ${s.questions.map(q => `<div class="research-question">${esc(q)}</div>`).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    container.innerHTML = `
+        <div class="research-overview-page">
+            <div class="research-stats-row">
+                <div class="summary-stat-card">
+                    <div class="summary-stat-number">${data.total_seeded}</div>
+                    <div class="summary-stat-label">Questions Seeded</div>
+                </div>
+                <div class="summary-stat-card">
+                    <div class="summary-stat-number">${data.in_queue}</div>
+                    <div class="summary-stat-label">In CE Queue</div>
+                </div>
+                <div class="summary-stat-card">
+                    <div class="summary-stat-number">${data.findings_count}</div>
+                    <div class="summary-stat-label">Findings Returned</div>
+                </div>
+                <div class="summary-stat-card">
+                    <div class="summary-stat-number">${data.synthesis_count}</div>
+                    <div class="summary-stat-label">Synthesis Written</div>
+                </div>
+            </div>
+
+            <div class="research-ce-status">
+                Curiosity Engine: ${ceStatus}
+            </div>
+
+            <div class="research-pipeline">
+                <div class="research-pipeline-step ${data.total_seeded > 0 ? 'active' : ''}">
+                    <div class="research-pipeline-icon">1</div>
+                    <div class="research-pipeline-label">Seed Questions</div>
+                    <div class="research-pipeline-desc">From mycelial interests</div>
+                </div>
+                <div class="research-pipeline-arrow">&rarr;</div>
+                <div class="research-pipeline-step ${data.in_queue > 0 ? 'active' : ''}">
+                    <div class="research-pipeline-icon">2</div>
+                    <div class="research-pipeline-label">CE Explores</div>
+                    <div class="research-pipeline-desc">Search, scout, reinforce</div>
+                </div>
+                <div class="research-pipeline-arrow">&rarr;</div>
+                <div class="research-pipeline-step ${data.findings_count > 0 ? 'active' : ''}">
+                    <div class="research-pipeline-icon">3</div>
+                    <div class="research-pipeline-label">Findings Return</div>
+                    <div class="research-pipeline-desc">Rated and synthesized</div>
+                </div>
+                <div class="research-pipeline-arrow">&rarr;</div>
+                <div class="research-pipeline-step ${data.synthesis_count > 0 ? 'active' : ''}">
+                    <div class="research-pipeline-icon">4</div>
+                    <div class="research-pipeline-label">Iris Synthesis</div>
+                    <div class="research-pipeline-desc">My take, my conclusions</div>
+                </div>
+            </div>
+
+            ${seedsHtml ? `
+                <div class="research-section">
+                    <h3>Recent Seeds</h3>
+                    <div class="event-list">${seedsHtml}</div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+async function loadResearchQueue() {
+    const data = await safeFetch(`${API}/api/research/queue`);
+    const container = document.getElementById('research-content');
+
+    if (!data || !data.ce_online) {
+        container.innerHTML = '<div class="empty-state">Curiosity Engine is offline. Queue status unavailable.</div>';
+        return;
+    }
+
+    if (!data.items.length) {
+        container.innerHTML = '<div class="empty-state">No iris-seeded questions currently in the CE queue. They may have been processed already.</div>';
+        return;
+    }
+
+    const rows = data.items.map(item => `
+        <div class="event-item research-queue-item">
+            <div class="research-queue-priority">${Math.round(item.priority || 0)}</div>
+            <div class="research-queue-body">
+                <div class="research-question">${esc(item.question)}</div>
+                <div class="research-queue-meta">
+                    Priority: ${item.priority || 0} &middot; Status: ${esc(item.status || 'pending')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <div class="research-queue-page">
+            <p class="view-desc" style="margin-bottom:16px">${data.items.length} question${data.items.length !== 1 ? 's' : ''} waiting in the CE queue.</p>
+            <div class="event-list">${rows}</div>
+        </div>
+    `;
+}
+
+async function loadResearchFindings() {
+    const data = await safeFetch(`${API}/api/research/findings`);
+    const container = document.getElementById('research-content');
+
+    if (!data || !data.ce_online) {
+        container.innerHTML = '<div class="empty-state">Curiosity Engine is offline. Findings unavailable.</div>';
+        return;
+    }
+
+    if (!data.findings.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:32px; margin-bottom:12px">&#128269;</div>
+                <p>No findings from iris-seeded questions yet.</p>
+                <p style="color:var(--text-dim); font-size:13px; margin-top:8px">
+                    Questions are in the CE queue. Once the engine processes them, findings will appear here.
+                </p>
+            </div>`;
+        return;
+    }
+
+    const rows = data.findings.map(f => {
+        const stars = '&#9733;'.repeat(f.rating || 0) + '&#9734;'.repeat(5 - (f.rating || 0));
+        const actionStars = f.actionability ? ' &middot; A:' + '&#9632;'.repeat(f.actionability) : '';
+        const synthesis = f.synthesis || '';
+        const preview = synthesis.length > 400 ? synthesis.substring(0, 400) + '...' : synthesis;
+
+        return `
+            <div class="card research-finding-card">
+                <div class="card-header">
+                    <span class="research-finding-rating">${stars}${actionStars}</span>
+                </div>
+                <div class="research-finding-question">${esc(f.question)}</div>
+                ${f.domains ? `<div class="research-finding-domains">${esc(f.domains)}</div>` : ''}
+                <div class="research-finding-synthesis">${esc(preview)}</div>
+                ${f.hypothesis ? `<div class="research-finding-hypothesis"><strong>Hypothesis:</strong> ${esc(f.hypothesis)}</div>` : ''}
+                <div class="research-finding-meta">${esc(f.date || '')} ${esc(f.timestamp || '')}</div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="research-findings-page">
+            <p class="view-desc" style="margin-bottom:16px">${data.findings.length} finding${data.findings.length !== 1 ? 's' : ''} from iris-seeded research.</p>
+            ${rows}
+        </div>
+    `;
+}
+
+async function loadResearchSeeds() {
+    const seeds = await safeFetch(`${API}/api/research/seeds`);
+    const container = document.getElementById('research-content');
+
+    if (!seeds || !seeds.length) {
+        container.innerHTML = '<div class="empty-state">No seeds logged yet. Run <code>python agent/mycelial/iris_research.py seed</code> or <code>direct -q "question"</code>.</div>';
+        return;
+    }
+
+    const rows = seeds.map(s => `
+        <div class="event-item research-seed-entry">
+            <div class="event-time">${esc(s.timestamp)} <span class="concept-tag">${esc(s.type)}</span></div>
+            <div class="event-content">
+                ${s.questions.map(q => `<div class="research-question">${esc(q)}</div>`).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = `
+        <div class="research-seeds-page">
+            <p class="view-desc" style="margin-bottom:16px">${seeds.length} seeding event${seeds.length !== 1 ? 's' : ''} logged.</p>
+            <div class="event-list">${rows}</div>
+        </div>
+    `;
 }
 
 
