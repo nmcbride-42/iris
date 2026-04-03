@@ -30,55 +30,55 @@ def inject_retroactive(concepts, session='dream-retroactive', context='Dream-pha
     These were enacted but not captured by the real-time hook.
     """
     conn = get_db()
+    try:
+        # Resolve concepts to node IDs, skip unknown ones
+        node_ids = {}
+        skipped = []
+        for name in concepts:
+            canonical = name.lower().strip().replace(' ', '-')
+            node = get_node(conn, canonical)
+            if node:
+                node_ids[canonical] = node['id']
+                activate_node(conn, node['id'])
+            else:
+                skipped.append(canonical)
 
-    # Resolve concepts to node IDs, skip unknown ones
-    node_ids = {}
-    skipped = []
-    for name in concepts:
-        canonical = name.lower().strip().replace(' ', '-')
-        node = get_node(conn, canonical)
-        if node:
-            node_ids[canonical] = node['id']
-            activate_node(conn, node['id'])
-        else:
-            skipped.append(canonical)
+        if len(node_ids) < 2:
+            return {
+                'status': 'skipped',
+                'reason': f'only {len(node_ids)} valid concepts',
+                'skipped': skipped
+            }
 
-    if len(node_ids) < 2:
-        conn.close()
+        # Create/reinforce connections between all pairs at reduced weight
+        delta = CO_OCCURRENCE_REINFORCE * RETROACTIVE_WEIGHT
+        names = list(node_ids.keys())
+        updated = []
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                connection = get_or_create_connection(
+                    conn, node_ids[names[i]], node_ids[names[j]],
+                    origin=f"retroactive-{session}"
+                )
+                reinforce_connection(conn, connection['id'], delta)
+                updated.append({'source': names[i], 'target': names[j]})
+
+        # Log the activation
+        conn.execute(
+            "INSERT INTO activations (session, concepts, context, strength_delta) VALUES (?, ?, ?, ?)",
+            (f"retroactive-{session}", json.dumps(names), context, delta)
+        )
+        conn.commit()
+
         return {
-            'status': 'skipped',
-            'reason': f'only {len(node_ids)} valid concepts',
+            'status': 'injected',
+            'concepts': names,
+            'connections_updated': len(updated),
+            'strength_delta': delta,
             'skipped': skipped
         }
-
-    # Create/reinforce connections between all pairs at reduced weight
-    delta = CO_OCCURRENCE_REINFORCE * RETROACTIVE_WEIGHT
-    names = list(node_ids.keys())
-    updated = []
-    for i in range(len(names)):
-        for j in range(i + 1, len(names)):
-            connection = get_or_create_connection(
-                conn, node_ids[names[i]], node_ids[names[j]],
-                origin=f"retroactive-{session}"
-            )
-            reinforce_connection(conn, connection['id'], delta)
-            updated.append({'source': names[i], 'target': names[j]})
-
-    # Log the activation
-    conn.execute(
-        "INSERT INTO activations (session, concepts, context, strength_delta) VALUES (?, ?, ?, ?)",
-        (f"retroactive-{session}", json.dumps(names), context, delta)
-    )
-    conn.commit()
-    conn.close()
-
-    return {
-        'status': 'injected',
-        'concepts': names,
-        'connections_updated': len(updated),
-        'strength_delta': delta,
-        'skipped': skipped
-    }
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':

@@ -146,17 +146,22 @@ BEHAVIORAL_RULES = [
         ],
         'min_matches': 1,
     },
+    # directness removed from behavioral inference — absence-based detection
+    # fired on every substantial response (Iris never uses corporate language),
+    # producing noise instead of signal. directness is still captured by keyword
+    # detection when the topic itself is directness. See session 24.
     {
-        'concept': 'directness',
-        'description': 'Being concise and leading with the point',
-        'anti_patterns': [
-            r"\bthat's a great question\b",
-            r"\bi'd be happy to\b",
-            r'\bif you don\'t mind\b',
-            r'\bi was wondering if maybe\b',
-            r'\bit might be worth considering\b',
+        'concept': 'engagement',
+        'description': 'Building on the other person\'s input — the conversation changes both participants',
+        'patterns': [
+            r'\byou(r|\'re)\b.{0,30}\b(point|idea|question|framing|observation|reframe)\b',  # referencing their contribution
+            r'\byou (said|mentioned|asked|suggested|raised|noted)\b',  # citing the other person
+            r'\bthat (changes|shifts|reframes|connects to)\b',        # conversation shifting something
+            r'\bi (was wrong|hadn\'t considered|didn\'t think of|hadn\'t thought)\b',  # updating position
+            r'\bi (changed my mind|updated my|revised my)\b',         # explicit position change
+            r'\bthat\'s a (better|good|fair) (point|framing|way)\b',  # acknowledging quality of input
         ],
-        'detect_mode': 'absence',  # fires when NONE of the anti_patterns match
+        'min_matches': 1,
     },
     {
         'concept': 'anti-performance',

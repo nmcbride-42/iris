@@ -1161,6 +1161,100 @@ main {
     50% { filter: drop-shadow(0 0 8px currentColor) brightness(1.2); }
 }
 
+/* ─── Graph Legend ─── */
+.legend-panel {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    z-index: 10;
+    max-width: 180px;
+    transition: opacity 0.2s;
+}
+
+.legend-panel.collapsed .legend-body { display: none; }
+.legend-panel.collapsed { background: var(--bg-surface); }
+
+.legend-toggle {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+}
+.legend-toggle:hover { color: var(--text-bright); }
+
+.legend-body { padding: 0 10px 10px; }
+
+.legend-section { margin-bottom: 8px; }
+.legend-section:last-child { margin-bottom: 0; }
+
+.legend-title {
+    color: var(--text-bright);
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    padding: 1px 0;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-dot-sm {
+    width: 5px;
+    height: 5px;
+    background: var(--text-dim);
+}
+
+.legend-dot-lg {
+    width: 12px;
+    height: 12px;
+    background: var(--text-dim);
+}
+
+.legend-dot-pulse {
+    animation: node-glow 2s ease-in-out infinite;
+}
+
+.legend-line {
+    width: 20px;
+    height: 2px;
+    flex-shrink: 0;
+    border-radius: 1px;
+    background: var(--text-dim);
+}
+
+.legend-line-thin {
+    height: 1px;
+    opacity: 0.4;
+}
+
+.legend-line-thick {
+    height: 4px;
+    opacity: 0.9;
+}
+
 /* ─── #16: Category Chart ─── */
 .category-chart {
     display: flex;
@@ -1760,4 +1854,190 @@ h1 {
     color: var(--text);
     font-size: 12px;
     line-height: 1.5;
+}
+
+/* ─── Dreams View ─── */
+
+.dream-overview {
+    max-width: 800px;
+    padding: 0 28px;
+}
+
+.dream-layer-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 28px;
+}
+
+.dream-layer {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 20px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.dream-layer:hover {
+    transform: translateX(4px);
+}
+
+.dream-layer-icon {
+    font-size: 22px;
+    min-width: 32px;
+    text-align: center;
+    line-height: 1;
+    padding-top: 2px;
+}
+
+.dream-layer-info {
+    flex: 1;
+}
+
+.dream-layer-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+}
+
+.dream-layer-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+.dream-layer-stat {
+    font-size: 11px;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+.dream-layer-rem {
+    background: linear-gradient(90deg, rgba(144,104,216,0.15), rgba(144,104,216,0.03));
+    border-left: 3px solid var(--rose);
+}
+.dream-layer-rem .dream-layer-stat { color: var(--rose); }
+
+.dream-layer-dmn {
+    background: linear-gradient(90deg, rgba(200,160,80,0.12), rgba(200,160,80,0.03));
+    border-left: 3px solid var(--amber);
+}
+.dream-layer-dmn .dream-layer-stat { color: var(--amber); }
+
+.dream-layer-hooks {
+    background: linear-gradient(90deg, rgba(74,184,184,0.12), rgba(74,184,184,0.03));
+    border-left: 3px solid var(--teal);
+}
+.dream-layer-hooks .dream-layer-stat { color: var(--teal); }
+
+.dream-recent-section {
+    margin-top: 20px;
+}
+.dream-recent-section h3 {
+    font-size: 14px;
+    color: var(--text-bright);
+    margin-bottom: 10px;
+}
+
+/* Daydream entry fields */
+.dream-field {
+    font-size: 12px;
+    color: var(--text);
+    padding: 2px 0;
+    line-height: 1.6;
+}
+.dream-field-label {
+    color: var(--amber);
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+/* Dream type badges */
+.dream-type-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.dream-badge-dmn {
+    background: rgba(200,160,80,0.15);
+    color: var(--amber);
+    border: 1px solid rgba(200,160,80,0.3);
+}
+.dream-badge-rem {
+    background: rgba(144,104,216,0.15);
+    color: var(--rose);
+    border: 1px solid rgba(144,104,216,0.3);
+}
+
+/* Sleep dream sections */
+.dream-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+}
+
+.dream-section-detail {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.dream-section-summary {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--iris);
+    cursor: pointer;
+    background: var(--bg-surface);
+    font-weight: 500;
+    user-select: none;
+}
+.dream-section-summary:hover {
+    background: var(--bg-hover);
+}
+
+.dream-section-body {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.7;
+    border-top: 1px solid var(--border);
+}
+.dream-section-body ul {
+    margin: 4px 0;
+    padding-left: 20px;
+}
+.dream-section-body li {
+    margin-bottom: 4px;
+}
+.dream-section-body code {
+    background: var(--bg-surface);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--teal);
+}
+.dream-section-body strong {
+    color: var(--text-bright);
+}
+
+.dream-sections-preview {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dream-daydream-entry {
+    border-left: 3px solid rgba(200,160,80,0.3);
+}
+.dream-sleep-entry {
+    border-left: 3px solid rgba(144,104,216,0.3);
 }

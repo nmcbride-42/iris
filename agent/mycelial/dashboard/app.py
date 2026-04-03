@@ -1307,6 +1307,121 @@ def api_insights_pending():
     })
 
 
+# ─── Dreams API ───
+
+JOURNAL_DIR = Path(__file__).parent.parent.parent / 'journal'
+DAYDREAM_LOG = JOURNAL_DIR / 'daydream-log.md'
+
+
+def _parse_daydream_log():
+    """Parse daydream-log.md into structured entries."""
+    if not DAYDREAM_LOG.exists():
+        return []
+    content = DAYDREAM_LOG.read_text(encoding='utf-8')
+    entries = []
+    # Split on ## headers (daydream entries)
+    sections = re.split(r'^## ', content, flags=re.MULTILINE)
+    for section in sections:
+        if not section.strip() or section.startswith('#'):
+            continue  # skip file header
+        lines = section.strip().split('\n')
+        if not lines:
+            continue
+        # First line is the title: "2026-04-02 17:31 — Daydream"
+        title = lines[0].strip()
+        timestamp_match = re.match(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2})', title)
+        timestamp = timestamp_match.group(1) if timestamp_match else ''
+        # Parse key-value fields from **bold** lines
+        fields = {}
+        for line in lines[1:]:
+            m = re.match(r'\*\*(.+?)\*\*:\s*(.+)', line.strip())
+            if m:
+                fields[m.group(1).lower()] = m.group(2)
+        entries.append({
+            'timestamp': timestamp,
+            'title': title,
+            'fields': fields,
+            'raw': '\n'.join(lines[1:]).strip(),
+        })
+    return entries
+
+
+def _parse_sleep_dreams():
+    """Parse sleep dream journal entries (*-dream.md files)."""
+    if not JOURNAL_DIR.exists():
+        return []
+    dream_files = sorted(JOURNAL_DIR.glob('*-dream.md'), reverse=True)
+    dreams = []
+    for f in dream_files[:20]:  # last 20 dreams
+        content = f.read_text(encoding='utf-8')
+        # Extract title from first # header
+        title_match = re.match(r'^#\s+(.+)', content)
+        title = title_match.group(1) if title_match else f.stem
+        # Extract date from filename: YYYY-MM-DD-HHMM-dream.md or YYYY-MM-DD-dream.md
+        date_match = re.match(r'(\d{4}-\d{2}-\d{2})', f.name)
+        date = date_match.group(1) if date_match else ''
+        # Parse sections (## headers)
+        sections = {}
+        current_section = None
+        current_lines = []
+        for line in content.split('\n'):
+            if line.startswith('## '):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_lines).strip()
+                current_section = line[3:].strip()
+                current_lines = []
+            elif current_section:
+                current_lines.append(line)
+        if current_section:
+            sections[current_section] = '\n'.join(current_lines).strip()
+        dreams.append({
+            'filename': f.name,
+            'date': date,
+            'title': title,
+            'sections': sections,
+            'section_names': list(sections.keys()),
+        })
+    return dreams
+
+
+@app.route('/api/dreams/daydream')
+def api_daydream_log():
+    """Return parsed daydream log entries."""
+    entries = _parse_daydream_log()
+    return jsonify(entries)
+
+
+@app.route('/api/dreams/sleep')
+def api_sleep_dreams():
+    """Return parsed sleep dream journal entries."""
+    dreams = _parse_sleep_dreams()
+    return jsonify(dreams)
+
+
+@app.route('/api/dreams/stats')
+def api_dream_stats():
+    """Summary stats for the dreaming tab."""
+    daydreams = _parse_daydream_log()
+    sleep_dreams = _parse_sleep_dreams()
+
+    # Read daydream lock for last run info
+    lock_file = Path(__file__).parent.parent / '.daydream-lock'
+    daydream_lock = {}
+    try:
+        daydream_lock = json.loads(lock_file.read_text(encoding='utf-8'))
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    return jsonify({
+        'daydream_count': len(daydreams),
+        'sleep_dream_count': len(sleep_dreams),
+        'last_daydream': daydream_lock.get('last_daydream'),
+        'daydream_number': daydream_lock.get('daydream_count', 0),
+        'network_snapshot': daydream_lock.get('network_snapshot'),
+        'last_sleep_dream': sleep_dreams[0]['date'] if sleep_dreams else None,
+    })
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8051))
     app.run(host='127.0.0.1', port=port, debug=False)

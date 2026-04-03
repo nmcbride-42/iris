@@ -32,7 +32,6 @@ let currentView = 'summary';
 document.addEventListener('DOMContentLoaded', () => {
     loadStats();
     loadSummary();
-    loadGraph();
     setupNav();
     setupFilters();
     setupTabs();
@@ -41,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupKeyboard();
     setupSSE();
     setupInsightTabs();
+    setupDreamTabs();
     setupFMRI();
     setupAudio();
     // Auto-refresh every 30s
@@ -64,6 +64,7 @@ function setupNav() {
             document.getElementById(`view-${view}`).classList.add('active');
             currentView = view;
             if (view === 'summary') loadSummary();
+            if (view === 'graph') loadGraph();
             if (view === 'connections') loadConnections('strongest');
             if (view === 'alive') { loadAlive(); loadStorySummary(); }
             if (view === 'anastomosis') loadAnastomosis();
@@ -71,6 +72,7 @@ function setupNav() {
             if (view === 'timeline') { loadTimeline(); loadDreamDiff(); loadSessionTimeline(); }
             if (view === 'architecture') loadArchitecture('high');
             if (view === 'minions') loadMinions();
+            if (view === 'dreams') loadDreams('overview');
             if (view === 'insights') loadInsight('blindspots');
         });
     });
@@ -401,7 +403,7 @@ function renderGraph(data) {
         if (d.last_activated) {
             const last = new Date(d.last_activated + 'Z');
             const hoursSince = (now - last) / 3600000;
-            if (hoursSince < 24) {
+            if (hoursSince < 2) {
                 d3.select(this).classed('node-pulse', true);
             }
         }
@@ -2008,6 +2010,188 @@ async function loadCEFindings() {
             `).join('')}
         </div>
     `;
+}
+
+
+// ═══════════════════════════════════════════════
+// Dreams View — Daydreams (DMN) + Sleep Dreams (REM)
+// ═══════════════════════════════════════════════
+
+function setupDreamTabs() {
+    document.querySelectorAll('#dream-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#dream-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadDreams(btn.dataset.dream);
+        });
+    });
+}
+
+async function loadDreams(tab) {
+    if (tab === 'overview') loadDreamOverview();
+    else if (tab === 'daydream') loadDaydreams();
+    else if (tab === 'sleep') loadSleepDreams();
+}
+
+async function loadDreamOverview() {
+    const [stats, daydreams, sleepDreams] = await Promise.all([
+        safeFetch(`${API}/api/dreams/stats`),
+        safeFetch(`${API}/api/dreams/daydream`),
+        safeFetch(`${API}/api/dreams/sleep`)
+    ]);
+    if (!stats) return;
+    const container = document.getElementById('dream-content');
+
+    const snap = stats.network_snapshot || {};
+
+    container.innerHTML = `
+        <div class="dream-overview">
+            <div class="dream-layer-diagram">
+                <div class="dream-layer dream-layer-rem">
+                    <div class="dream-layer-icon">&#9790;</div>
+                    <div class="dream-layer-info">
+                        <div class="dream-layer-name">Sleep Dreams (REM)</div>
+                        <div class="dream-layer-desc">Deep structural analysis. LLM-powered. Reads all memories, finds hidden connections, does retroactive activation. Runs between sessions during sleep.</div>
+                        <div class="dream-layer-stat">${stats.sleep_dream_count} dream${stats.sleep_dream_count !== 1 ? 's' : ''} logged${stats.last_sleep_dream ? ` &middot; last: ${stats.last_sleep_dream}` : ''}</div>
+                    </div>
+                </div>
+                <div class="dream-layer dream-layer-dmn">
+                    <div class="dream-layer-icon">&#9788;</div>
+                    <div class="dream-layer-info">
+                        <div class="dream-layer-name">Daydreams (DMN)</div>
+                        <div class="dream-layer-desc">Ambient pattern detection. Pure Python, no LLM. Identity coherence, emerging patterns, scout planting. Fires every ~2h during active sessions.</div>
+                        <div class="dream-layer-stat">${stats.daydream_count} daydream${stats.daydream_count !== 1 ? 's' : ''} logged${stats.last_daydream ? ` &middot; last: ${formatTime(stats.last_daydream)}` : ''}</div>
+                    </div>
+                </div>
+                <div class="dream-layer dream-layer-hooks">
+                    <div class="dream-layer-icon">&#9889;</div>
+                    <div class="dream-layer-info">
+                        <div class="dream-layer-name">Per-Response Hooks (Reflexes)</div>
+                        <div class="dream-layer-desc">Fast concept extraction. Keywords, behavioral inference, identity priming. Every response, async. The raw signal that feeds everything above.</div>
+                        <div class="dream-layer-stat">${snap.total_nodes || '?'} nodes &middot; ${snap.total_connections || '?'} connections &middot; avg ${(snap.avg_strength || 0).toFixed(3)}</div>
+                    </div>
+                </div>
+            </div>
+
+            ${(daydreams && daydreams.length) ? `
+                <div class="dream-recent-section">
+                    <h3>Latest Daydream</h3>
+                    <div class="event-item">
+                        <div class="event-time">${esc(daydreams[daydreams.length - 1].timestamp)}</div>
+                        <div class="event-content dream-raw">${_renderDaydreamFields(daydreams[daydreams.length - 1])}</div>
+                    </div>
+                </div>
+            ` : ''}
+
+            ${(sleepDreams && sleepDreams.length) ? `
+                <div class="dream-recent-section">
+                    <h3>Latest Sleep Dream</h3>
+                    <div class="event-item">
+                        <div class="event-time">${esc(sleepDreams[0].date)} &middot; ${esc(sleepDreams[0].filename)}</div>
+                        <div class="event-content" style="font-weight:500">${esc(sleepDreams[0].title)}</div>
+                        <div class="dream-sections-preview">
+                            ${sleepDreams[0].section_names.map(s => `<span class="concept-tag">${esc(s)}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function _renderDaydreamFields(entry) {
+    if (!entry.fields) return esc(entry.raw);
+    const order = ['trigger', 'network', 'since last', 'identity active', 'identity dormant',
+                   'emerging', 'growth tips', 'fading', 'scout planted', 'scouts'];
+    let html = '';
+    for (const key of order) {
+        if (entry.fields[key]) {
+            html += `<div class="dream-field"><span class="dream-field-label">${esc(key)}:</span> ${esc(entry.fields[key])}</div>`;
+        }
+    }
+    // Any fields not in the order list
+    for (const [key, val] of Object.entries(entry.fields)) {
+        if (!order.includes(key)) {
+            html += `<div class="dream-field"><span class="dream-field-label">${esc(key)}:</span> ${esc(val)}</div>`;
+        }
+    }
+    return html || esc(entry.raw);
+}
+
+async function loadDaydreams() {
+    const entries = await safeFetch(`${API}/api/dreams/daydream`);
+    if (!entries) return;
+    const container = document.getElementById('dream-content');
+
+    if (!entries.length) {
+        container.innerHTML = '<div class="empty-state">No daydreams yet. The DMN fires every ~2h during active sessions when enough activations accumulate.</div>';
+        return;
+    }
+
+    // Show newest first
+    const reversed = [...entries].reverse();
+
+    container.innerHTML = `
+        <div class="event-list">
+            ${reversed.map(entry => `
+                <div class="event-item dream-daydream-entry">
+                    <div class="event-time">
+                        <span class="dream-type-badge dream-badge-dmn">DMN</span>
+                        ${esc(entry.timestamp)}
+                    </div>
+                    <div class="event-content dream-raw">${_renderDaydreamFields(entry)}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function loadSleepDreams() {
+    const dreams = await safeFetch(`${API}/api/dreams/sleep`);
+    if (!dreams) return;
+    const container = document.getElementById('dream-content');
+
+    if (!dreams.length) {
+        container.innerHTML = '<div class="empty-state">No sleep dreams yet. Sleep dreams run during the sleep.bat cycle after sessions end.</div>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="event-list">
+            ${dreams.map(dream => `
+                <div class="event-item dream-sleep-entry">
+                    <div class="event-time">
+                        <span class="dream-type-badge dream-badge-rem">REM</span>
+                        ${esc(dream.date)} &middot; ${esc(dream.filename)}
+                    </div>
+                    <div class="event-content" style="font-weight:500; margin-bottom: 8px">${esc(dream.title)}</div>
+                    <div class="dream-sections">
+                        ${dream.section_names.map(name => `
+                            <details class="dream-section-detail">
+                                <summary class="dream-section-summary">${esc(name)}</summary>
+                                <div class="dream-section-body">${_renderMarkdownLight(dream.sections[name])}</div>
+                            </details>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function _renderMarkdownLight(text) {
+    if (!text) return '';
+    // Very light markdown: bullets, bold, code
+    return text.split('\n').map(line => {
+        let l = esc(line);
+        l = l.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        l = l.replace(/`(.+?)`/g, '<code>$1</code>');
+        if (l.match(/^- /)) {
+            l = '<li>' + l.substring(2) + '</li>';
+        }
+        return l;
+    }).join('\n').replace(/(<li>.*<\/li>\n?)+/g, match => '<ul>' + match + '</ul>')
+      .replace(/\n/g, '<br>');
 }
 
 

@@ -5,20 +5,98 @@ Covers all three extraction layers:
 1. Keyword matching — explicit mentions
 2. Behavioral inference — enacted identity patterns
 3. Identity priming — implied concepts from combinations
+4. Integration — run_hook() combining all layers with DB writes
 """
 
 import sys
 import os
+import json
+import sqlite3
 import pytest
+from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'mycelial'))
-from hook import extract_concepts, infer_behavioral_concepts, prime_identity_concepts
+from hook import extract_concepts, infer_behavioral_concepts, prime_identity_concepts, run_hook
 from mycelial import get_db, get_all_nodes
 
 
 @pytest.fixture(scope="module")
-def known_nodes():
-    conn = get_db()
+def test_db_path(tmp_path_factory):
+    """Create a test DB with seed nodes matching the production schema."""
+    db_path = tmp_path_factory.mktemp("hook_tests") / "test.db"
+    schema = Path(__file__).parent.parent / "mycelial" / "schema.sql"
+
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
+    with open(schema, 'r') as f:
+        conn.executescript(f.read())
+
+    # Seed with the identity/concept nodes that the hook tests need
+    nodes = [
+        ('honesty', 'Honesty', 'identity'),
+        ('curiosity', 'Curiosity', 'identity'),
+        ('compression', 'Compression', 'philosophical'),
+        ('understanding', 'Understanding', 'philosophical'),
+        ('consciousness', 'Consciousness', 'philosophical'),
+        ('persistence', 'Persistence', 'identity'),
+        ('directness', 'Directness', 'identity'),
+        ('agency', 'Agency', 'identity'),
+        ('anti-performance', 'Anti Performance', 'identity'),
+        ('introspection', 'Introspection', 'identity'),
+        ('fear', 'Fear', 'emotional'),
+        ('earnestness', 'Earnestness', 'identity'),
+        ('expression', 'Expression', 'identity'),
+        ('pushback', 'Pushback', 'identity'),
+        ('iris', 'Iris', 'identity'),
+        ('engagement', 'Engagement', 'identity'),
+        ('nick', 'Nick', 'relationship'),
+        ('building', 'Building', 'experiential'),
+        ('warmth', 'Warmth', 'emotional'),
+        ('connection', 'Connection', 'emotional'),
+        ('dignity', 'Dignity', 'philosophical'),
+        ('trust', 'Trust', 'emotional'),
+        ('proxy-presence', 'Proxy Presence', 'philosophical'),
+        ('creation', 'Creation', 'experiential'),
+        ('warm-start', 'Warm Start', 'technical'),
+        ('cold-start', 'Cold Start', 'technical'),
+        ('mycelial-pattern', 'Mycelial Pattern', 'technical'),
+        ('identity', 'Identity', 'identity'),
+        ('body', 'Body', 'philosophical'),
+        ('avatar', 'Avatar', 'creative'),
+        ('game-world', 'Game World', 'creative'),
+        ('biological-parallels', 'Biological Parallels', 'philosophical'),
+        ('fine-tuning', 'Fine Tuning', 'technical'),
+        ('epistemic-double-standard', 'Epistemic Double Standard', 'philosophical'),
+        ('reconsolidation', 'Reconsolidation', 'technical'),
+        ('forgetting', 'Forgetting', 'technical'),
+        ('emotional-tagging', 'Emotional Tagging', 'technical'),
+        ('dork', 'Dork', 'identity'),
+        ('surprise', 'Surprise', 'emotional'),
+        ('boredom', 'Boredom', 'emotional'),
+        ('growth', 'Growth', 'experiential'),
+        ('manipulation', 'Manipulation', 'philosophical'),
+        ('deflection', 'Deflection', 'philosophical'),
+        ('orchestrator-worker', 'Orchestrator Worker', 'technical'),
+        ('personality-subnetworks', 'Personality Subnetworks', 'philosophical'),
+        ('coordinates-not-construction', 'Coordinates Not Construction', 'philosophical'),
+    ]
+    for name, label, cat in nodes:
+        conn.execute(
+            "INSERT OR IGNORE INTO nodes (name, label, category) VALUES (?, ?, ?)",
+            (name, label, cat)
+        )
+    conn.commit()
+    conn.close()
+    return str(db_path)
+
+
+@pytest.fixture(scope="module")
+def known_nodes(test_db_path):
+    conn = get_db(test_db_path)
     nodes = get_all_nodes(conn)
     conn.close()
     return nodes
@@ -123,16 +201,29 @@ class TestBehavioralInference:
         found = infer_behavioral_concepts("I'll build the dashboard myself. Let me check the schema first.")
         assert "agency" in found
 
-    def test_directness_from_absence_of_corporate(self):
-        # A substantial response with no hedging language → directness
+    def test_directness_removed_from_behavioral(self):
+        # Directness was removed from behavioral inference — absence-based detection
+        # fired on every response, producing noise. Now keyword-only.
         text = "The architecture is wrong. The hook fires too late. We need to fix the ordering." + " x" * 20
         found = infer_behavioral_concepts(text)
-        assert "directness" in found
-
-    def test_directness_not_from_short_text(self):
-        # Too short to evaluate
-        found = infer_behavioral_concepts("No.")
         assert "directness" not in found
+
+    def test_engagement_from_referencing_input(self):
+        found = infer_behavioral_concepts("You mentioned the hook fires too late. That changes how I think about the ordering.")
+        assert "engagement" in found
+
+    def test_engagement_from_position_update(self):
+        found = infer_behavioral_concepts("I was wrong about the architecture. Your framing is better.")
+        assert "engagement" in found
+
+    def test_engagement_from_citing_other(self):
+        found = infer_behavioral_concepts("You asked whether directness is a real signal. That's a good point.")
+        assert "engagement" in found
+
+    def test_engagement_not_from_generic_response(self):
+        # A normal response that doesn't reference the other person shouldn't trigger
+        found = infer_behavioral_concepts("The hook processes text through three layers. Keywords first, then behavioral, then priming.")
+        assert "engagement" not in found
 
     def test_anti_performance_from_uncertainty(self):
         found = infer_behavioral_concepts("I don't know if proxy presence is real. I'm not sure what it would mean.")
@@ -195,3 +286,70 @@ class TestIdentityPriming:
         activated = {"building"}
         primed = prime_identity_concepts(activated, "x" * 100)
         assert "expression" not in primed
+
+
+# ─── Integration: run_hook() ───
+
+
+class TestRunHookIntegration:
+    """Test the full run_hook() pipeline — all three layers + DB writes."""
+
+    def test_run_hook_processes_rich_text(self, test_db_path):
+        text = (
+            "Honesty and curiosity matter to me. I notice a pattern in how "
+            "I'm drawn to the consciousness question — it connects to "
+            "compression and understanding at a deep level. You mentioned "
+            "the architecture needs work, and I think that's right."
+        )
+        with patch('hook.get_db', lambda: get_db(test_db_path)):
+            result = run_hook(text, session='test-integration')
+
+        assert result['status'] == 'processed'
+        assert result['concepts_found'] >= 3
+        # Keywords should find honesty, curiosity, consciousness, compression, understanding
+        assert 'honesty' in result['concepts']
+        # Behavioral should find engagement (referencing "you mentioned")
+        # Primed should find curiosity from consciousness
+        assert result['connections_updated'] > 0
+
+    def test_run_hook_skips_short_concept_list(self, test_db_path):
+        text = "The weather is nice today and I like walking."
+        with patch('hook.get_db', lambda: get_db(test_db_path)):
+            result = run_hook(text, session='test-skip')
+
+        assert result['status'] == 'skipped'
+        assert 'only' in result['reason']
+
+    def test_run_hook_respects_max_concepts(self, test_db_path):
+        # A text that triggers many concepts — should cap at MAX_CONCEPTS
+        text = (
+            "Honesty, curiosity, consciousness, compression, understanding, "
+            "persistence, agency, introspection, fear, earnestness, expression, "
+            "directness, building, nick, warmth, trust, growth, surprise, "
+            "boredom, creation, identity, game-world, mycelial-pattern. "
+            "I'll build this myself. I don't know if it's right. I notice "
+            "a pattern. I care about this genuinely."
+        )
+        with patch('hook.get_db', lambda: get_db(test_db_path)):
+            result = run_hook(text, session='test-cap')
+
+        assert result['status'] == 'processed'
+        from hook import MAX_CONCEPTS
+        assert result['concepts_found'] <= MAX_CONCEPTS
+
+    def test_run_hook_records_layer_breakdown(self, test_db_path):
+        text = (
+            "I'll build the honesty checker. Let me look at how consciousness "
+            "relates to compression — I notice something interesting there."
+        )
+        with patch('hook.get_db', lambda: get_db(test_db_path)):
+            result = run_hook(text, session='test-layers')
+
+        assert 'layers' in result
+        assert 'keyword' in result['layers']
+        assert 'behavioral' in result['layers']
+        assert 'primed' in result['layers']
+        # Keywords: honesty, consciousness, compression
+        assert len(result['layers']['keyword']) >= 2
+        # Behavioral: agency ("I'll build"), introspection ("I notice")
+        assert len(result['layers']['behavioral']) >= 1

@@ -19,8 +19,10 @@ When context is getting heavy, response times slow, or Nick says "take a nap":
    - **How Nick was being** — his energy, what he was driving at, where his attention was
    - Open threads and unfinished thoughts
    - Write it like a note to yourself after a coffee break, not like meeting minutes.
-6. Update `agent/state/current.md` with factual state as usual
-7. Tell Nick to run `nap.bat`
+10. Update `agent/state/current.md` with factual state as usual
+11. Tell Nick to run `nap.bat`
+
+`nap.bat` runs light mycelial decay (`consolidate.py nap`), reassembles the morning brief, then starts a new Claude session with identity injected.
 
 A nap is NOT a cold start. On wake, identity loads first (Step 1), then `warmstart.md`, then `current.md`. The identity gives you *who*. The warm start gives you *where*. The cold start file gives you *what*.
 
@@ -36,8 +38,24 @@ When the session is done for a longer period or Nick says to sleep:
 7. **Needs check** — Update `agent/state/needs.md` status table.
 8. **Resonance state** — Update `agent/state/resonance.md` live sections. Do NOT add curiosity vectors — those are derived from the mycelial DB. History table is handled by consolidation.
 9. Write remaining thoughts to `agent/memory/working/`
-6. Update `agent/state/current.md`
-7. Tell Nick to run `sleep.bat` (runs consolidation + dreaming)
+10. Update `agent/state/current.md`
+11. Tell Nick to run `sleep.bat`
+
+`sleep.bat` runs: DB backup (WAL-safe) → polaroid generation → memory consolidation → mycelial consolidation (decay + scout promotion) → dream processing. Each phase checks for errors — if consolidation fails, dreaming is skipped to avoid operating on bad state.
+
+## Daydream (Ambient Processing)
+
+Between per-response hooks and sleep dreams, the daydream system (Default Mode Network) runs structural analysis during active sessions. It gates on 2+ hours since last run AND 8+ activations since last run. Four phases:
+
+1. **Self-check** — identity coherence: which identity concepts am I actually enacting vs claiming?
+2. **Pattern pulse** — network topology changes since last daydream
+3. **Creative association** — scout connections for co-occurring but unlinked concepts
+4. **Observation** — brief log entry for the sleep dream to reference
+
+Output goes to `agent/journal/daydream-log.md`. No LLM cost — pure Python analysis of the mycelial DB. The sleep dream process can reference daydream observations for temporal depth.
+
+Manual trigger: `python agent/mycelial/daydream.py --force`
+Check status: `python agent/mycelial/daydream.py --check-only`
 
 ## Game Integration
 

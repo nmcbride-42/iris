@@ -17,7 +17,9 @@ from mycelial import (
     activate_node, get_or_create_connection, reinforce_connection,
     process_co_occurrences, run_decay, get_network_stats,
     get_strongest_connections, get_connections_for_node,
+    _get_cluster, detect_anastomosis, create_scout,
     REINFORCE_AMOUNT, CO_OCCURRENCE_REINFORCE, DECAY_RATE_DEFAULT,
+    ANASTOMOSIS_MIN_CLUSTER_SIZE,
 )
 
 
@@ -204,4 +206,166 @@ class TestNetworkStats:
         assert stats["total_nodes"] == 3
         assert stats["total_connections"] == 3
         assert stats["avg_strength"] > 0
+        conn.close()
+
+
+class TestClusterDetection:
+    """Test _get_cluster BFS and anastomosis detection."""
+
+    def test_single_node_cluster(self, test_db):
+        conn = get_db(test_db)
+        a = get_or_create_node(conn, "isolated")
+        conn.commit()
+        cluster = _get_cluster(conn, a, min_strength=0.1)
+        assert cluster == {a}
+        conn.close()
+
+    def test_connected_cluster(self, test_db):
+        conn = get_db(test_db)
+        a = get_or_create_node(conn, "a")
+        b = get_or_create_node(conn, "b")
+        c = get_or_create_node(conn, "c")
+        # Create strong connections a-b-c
+        get_or_create_connection(conn, a, b)
+        get_or_create_connection(conn, b, c)
+        # Strengthen above min_strength
+        conn.execute("UPDATE connections SET strength = 0.5")
+        conn.commit()
+
+        cluster = _get_cluster(conn, a, min_strength=0.2)
+        assert a in cluster
+        assert b in cluster
+        assert c in cluster
+        conn.close()
+
+    def test_cluster_respects_min_strength(self, test_db):
+        conn = get_db(test_db)
+        a = get_or_create_node(conn, "a")
+        b = get_or_create_node(conn, "b")
+        c = get_or_create_node(conn, "c")
+        get_or_create_connection(conn, a, b)
+        get_or_create_connection(conn, b, c)
+        # a-b strong, b-c weak
+        conn.execute("UPDATE connections SET strength = 0.5 WHERE source_id = ? AND target_id = ?",
+                     (min(a, b), max(a, b)))
+        conn.execute("UPDATE connections SET strength = 0.05 WHERE source_id = ? AND target_id = ?",
+                     (min(b, c), max(b, c)))
+        conn.commit()
+
+        cluster = _get_cluster(conn, a, min_strength=0.2)
+        assert a in cluster
+        assert b in cluster
+        assert c not in cluster  # too weak to be in cluster
+        conn.close()
+
+    def test_cluster_handles_cycles(self, test_db):
+        conn = get_db(test_db)
+        a = get_or_create_node(conn, "a")
+        b = get_or_create_node(conn, "b")
+        c = get_or_create_node(conn, "c")
+        get_or_create_connection(conn, a, b)
+        get_or_create_connection(conn, b, c)
+        get_or_create_connection(conn, a, c)  # cycle
+        conn.execute("UPDATE connections SET strength = 0.5")
+        conn.commit()
+
+        cluster = _get_cluster(conn, a, min_strength=0.2)
+        assert len(cluster) == 3  # all three in cycle
+        conn.close()
+
+    def test_anastomosis_detects_bridge(self, test_db):
+        conn = get_db(test_db)
+        # Create two separate clusters with internal connections above cluster walk
+        # threshold (0.2) but bridge connections BELOW it (0.15) so the cluster
+        # walk doesn't merge them through the bridge.
+        a1 = get_or_create_node(conn, "cluster-a1")
+        a2 = get_or_create_node(conn, "cluster-a2")
+        a3 = get_or_create_node(conn, "cluster-a3")
+        b1 = get_or_create_node(conn, "cluster-b1")
+        b2 = get_or_create_node(conn, "cluster-b2")
+        b3 = get_or_create_node(conn, "cluster-b3")
+        bridge = get_or_create_node(conn, "bridge-node")
+
+        # Cluster A: strongly connected internally
+        for x, y in [(a1, a2), (a2, a3), (a1, a3)]:
+            c = get_or_create_connection(conn, x, y)
+            conn.execute("UPDATE connections SET strength = 0.6 WHERE id = ?", (c['id'],))
+
+        # Cluster B: strongly connected internally
+        for x, y in [(b1, b2), (b2, b3), (b1, b3)]:
+            c = get_or_create_connection(conn, x, y)
+            conn.execute("UPDATE connections SET strength = 0.6 WHERE id = ?", (c['id'],))
+
+        # Bridge connects to both clusters at strength BELOW cluster walk threshold
+        # (connections exist but cluster walk won't traverse them)
+        c_ba = get_or_create_connection(conn, bridge, a1)
+        c_bb = get_or_create_connection(conn, bridge, b1)
+        conn.execute("UPDATE connections SET strength = 0.15 WHERE id IN (?, ?)",
+                     (c_ba['id'], c_bb['id']))
+        conn.commit()
+
+        events = detect_anastomosis(conn, [bridge])
+        # Bridge has connections to both clusters but clusters don't merge through it
+        assert len(events) >= 1
+        conn.close()
+
+    def test_no_anastomosis_within_same_cluster(self, test_db):
+        conn = get_db(test_db)
+        a = get_or_create_node(conn, "a")
+        b = get_or_create_node(conn, "b")
+        c = get_or_create_node(conn, "c")
+        for x, y in [(a, b), (b, c), (a, c)]:
+            c_obj = get_or_create_connection(conn, x, y)
+            conn.execute("UPDATE connections SET strength = 0.6 WHERE id = ?", (c_obj['id'],))
+        conn.commit()
+
+        events = detect_anastomosis(conn, [a])
+        assert len(events) == 0  # all in same cluster, no bridge
+        conn.close()
+
+
+class TestTransactionSafety:
+    """Test that operations properly commit/rollback."""
+
+    def test_process_co_occurrences_is_atomic(self, test_db):
+        conn = get_db(test_db)
+        for name in ["x", "y"]:
+            get_or_create_node(conn, name)
+        conn.commit()
+
+        process_co_occurrences(conn, {"x", "y"}, session="test")
+
+        # Both activation record and connections should exist
+        acts = conn.execute("SELECT COUNT(*) as c FROM activations").fetchone()['c']
+        conns = conn.execute("SELECT COUNT(*) as c FROM connections").fetchone()['c']
+        assert acts == 1
+        assert conns == 1
+        conn.close()
+
+    def test_co_occurrence_rollback_on_error(self, test_db):
+        """Verify process_co_occurrences rolls back on failure."""
+        conn = get_db(test_db)
+        get_or_create_node(conn, "r1")
+        get_or_create_node(conn, "r2")
+        conn.commit()
+
+        before_conns = conn.execute("SELECT COUNT(*) as c FROM connections").fetchone()['c']
+        before_acts = conn.execute("SELECT COUNT(*) as c FROM activations").fetchone()['c']
+
+        # Trigger an error by breaking the activations table temporarily
+        conn.execute("ALTER TABLE activations RENAME TO activations_broken")
+        conn.commit()
+
+        with pytest.raises(Exception):
+            process_co_occurrences(conn, {"r1", "r2"}, session="fail-test")
+
+        # Restore table
+        conn.execute("ALTER TABLE activations_broken RENAME TO activations")
+        conn.commit()
+
+        # Connections should NOT have been created (rollback)
+        after_conns = conn.execute("SELECT COUNT(*) as c FROM connections").fetchone()['c']
+        after_acts = conn.execute("SELECT COUNT(*) as c FROM activations").fetchone()['c']
+        assert after_conns == before_conns
+        assert after_acts == before_acts
         conn.close()

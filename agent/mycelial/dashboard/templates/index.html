@@ -25,6 +25,7 @@
             <button class="nav-btn" data-view="timeline" role="tab" aria-label="View activation timeline" aria-selected="false">Timeline</button>
             <button class="nav-btn" data-view="architecture" role="tab" aria-label="View system architecture" aria-selected="false">Architecture</button>
             <button class="nav-btn" data-view="minions" role="tab" aria-label="View minion network" aria-selected="false">Minions</button>
+            <button class="nav-btn" data-view="dreams" role="tab" aria-label="View dreaming activity" aria-selected="false">Dreams</button>
             <button class="nav-btn" data-view="insights" role="tab" aria-label="View cognitive insights" aria-selected="false">Insights</button>
         </nav>
         <div class="header-controls">
@@ -95,6 +96,44 @@
             </div>
             <div id="graph-container">
                 <svg id="network-graph"></svg>
+                <div id="graph-legend" class="legend-panel">
+                <button class="legend-toggle" onclick="this.parentElement.classList.toggle('collapsed')" title="Toggle legend">Legend</button>
+                <div class="legend-body">
+                    <div class="legend-section">
+                        <div class="legend-title">Node Color — Category</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#7c6bff"></span> Identity</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#9068d8"></span> Philosophical</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#4ab8b8"></span> Technical</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#5aad7a"></span> Experiential</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#a868a0"></span> Emotional</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#c8a050"></span> Relationship</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#c87050"></span> Creative</div>
+                    </div>
+                    <div class="legend-section">
+                        <div class="legend-title">Node Size</div>
+                        <div class="legend-item"><span class="legend-dot legend-dot-sm"></span> Few activations</div>
+                        <div class="legend-item"><span class="legend-dot legend-dot-lg"></span> Many activations</div>
+                    </div>
+                    <div class="legend-section">
+                        <div class="legend-title">Node Pulse</div>
+                        <div class="legend-item"><span class="legend-dot legend-dot-pulse" style="background:#7c6bff"></span> Active in last 2h</div>
+                    </div>
+                    <div class="legend-section">
+                        <div class="legend-title">Edge Color — Connection Type</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#5aad7a"></span> Reinforcing</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#c8a050; background-image:repeating-linear-gradient(90deg,#c8a050 0 4px,transparent 4px 7px)"></span> Tension</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#7c6bff"></span> Causal</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#6a6a88"></span> Co-occurrence</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#9068d8"></span> Bridging</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#4ab8b8; background-image:repeating-linear-gradient(90deg,#4ab8b8 0 2px,transparent 2px 6px)"></span> Scout</div>
+                    </div>
+                    <div class="legend-section">
+                        <div class="legend-title">Edge Weight</div>
+                        <div class="legend-item"><span class="legend-line legend-line-thin"></span> Weak connection</div>
+                        <div class="legend-item"><span class="legend-line legend-line-thick"></span> Strong connection</div>
+                    </div>
+                </div>
+            </div>
             </div>
             <div id="node-detail" class="detail-panel hidden">
                 <button class="close-btn" onclick="closeDetail()">&times;</button>
@@ -222,6 +261,20 @@
                 </div>
             </div>
         </section>
+        <!-- Dreams View -->
+        <section id="view-dreams" class="view">
+            <div class="view-header">
+                <h2>Dreams</h2>
+                <p class="view-desc">Three layers of cognitive processing — reflexes, daydreaming, and deep sleep.</p>
+                <div class="tabs" id="dream-tabs">
+                    <button class="tab-btn active" data-dream="overview">Overview</button>
+                    <button class="tab-btn" data-dream="daydream">Daydreams (DMN)</button>
+                    <button class="tab-btn" data-dream="sleep">Sleep Dreams (REM)</button>
+                </div>
+            </div>
+            <div id="dream-content"></div>
+        </section>
+
         <!-- Insights View -->
         <section id="view-insights" class="view">
             <div class="view-header">
@@ -241,6 +294,6 @@
     <!-- Surprise Toast Container -->
     <div id="surprise-toast-container"></div>
 
-    <script src="/static/app.js?v=7"></script>
+    <script src="/static/app.js?v=10"></script>
 </body>
 </html>

@@ -33,6 +33,7 @@ def get_db(db_path=None):
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
@@ -47,7 +48,8 @@ def init_db(db_path=None):
 # ─── Node Operations ───
 
 def get_or_create_node(conn, name, label=None, category='general', source_file=None):
-    """Get existing node or create a new one. Returns node id."""
+    """Get existing node or create a new one. Returns node id.
+    Does NOT commit — caller is responsible for transaction management."""
     canonical = name.lower().strip().replace(' ', '-')
     row = conn.execute("SELECT id FROM nodes WHERE name = ?", (canonical,)).fetchone()
     if row:
@@ -58,8 +60,8 @@ def get_or_create_node(conn, name, label=None, category='general', source_file=N
         "INSERT INTO nodes (name, label, category, source_file) VALUES (?, ?, ?, ?)",
         (canonical, display_label, category, source_file)
     )
-    conn.commit()
-    return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    row = conn.execute("SELECT id FROM nodes WHERE name = ?", (canonical,)).fetchone()
+    return row['id']
 
 
 def activate_node(conn, node_id):
@@ -100,9 +102,11 @@ def get_or_create_connection(conn, source_id, target_id, conn_type='co-occurrenc
         "INSERT INTO connections (source_id, target_id, type, origin) VALUES (?, ?, ?, ?)",
         (a, b, conn_type, origin)
     )
-    conn.commit()
-    cid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-    return dict(conn.execute("SELECT * FROM connections WHERE id = ?", (cid,)).fetchone())
+    # Verify with SELECT — safer than last_insert_rowid across concurrent writers
+    row = conn.execute(
+        "SELECT * FROM connections WHERE source_id = ? AND target_id = ?", (a, b)
+    ).fetchone()
+    return dict(row)
 
 
 def reinforce_connection(conn, connection_id, amount=REINFORCE_AMOUNT):
@@ -176,40 +180,48 @@ def process_co_occurrences(conn, concept_names, session=None, context=None):
     Process a set of concepts that co-occurred in a response.
     Creates/reinforces connections between all pairs.
     Returns list of connections that were created or reinforced.
+
+    All DB writes happen in a single transaction — either everything
+    commits or nothing does. This prevents partial state from a
+    mid-operation crash (e.g., nodes created but no activation logged).
     """
-    # Get or create all nodes
-    node_ids = {}
-    for name in concept_names:
-        node_ids[name] = get_or_create_node(conn, name)
-        activate_node(conn, node_ids[name])
+    try:
+        # Get or create all nodes
+        node_ids = {}
+        for name in concept_names:
+            node_ids[name] = get_or_create_node(conn, name)
+            activate_node(conn, node_ids[name])
 
-    # Create/reinforce connections between all pairs
-    results = []
-    names = list(concept_names)
-    for i in range(len(names)):
-        for j in range(i + 1, len(names)):
-            connection = get_or_create_connection(
-                conn, node_ids[names[i]], node_ids[names[j]],
-                origin=f"session-{session}" if session else "co-occurrence"
-            )
-            reinforce_connection(conn, connection['id'], CO_OCCURRENCE_REINFORCE)
-            results.append({
-                'source': names[i],
-                'target': names[j],
-                'connection_id': connection['id']
-            })
+        # Create/reinforce connections between all pairs
+        results = []
+        names = list(concept_names)
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                connection = get_or_create_connection(
+                    conn, node_ids[names[i]], node_ids[names[j]],
+                    origin=f"session-{session}" if session else "co-occurrence"
+                )
+                reinforce_connection(conn, connection['id'], CO_OCCURRENCE_REINFORCE)
+                results.append({
+                    'source': names[i],
+                    'target': names[j],
+                    'connection_id': connection['id']
+                })
 
-    # Log the activation
-    conn.execute(
-        "INSERT INTO activations (session, concepts, context, strength_delta) VALUES (?, ?, ?, ?)",
-        (session, json.dumps(names), context, CO_OCCURRENCE_REINFORCE)
-    )
-    conn.commit()
+        # Log the activation
+        conn.execute(
+            "INSERT INTO activations (session, concepts, context, strength_delta) VALUES (?, ?, ?, ?)",
+            (session, json.dumps(names), context, CO_OCCURRENCE_REINFORCE)
+        )
+        conn.commit()
 
-    # Check for anastomosis
-    new_bridges = detect_anastomosis(conn, [node_ids[n] for n in names])
+        # Check for anastomosis (after commit — reads committed state)
+        new_bridges = detect_anastomosis(conn, [node_ids[n] for n in names])
 
-    return results, new_bridges
+        return results, new_bridges
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ─── Decay ───
@@ -218,54 +230,62 @@ def run_decay(conn, trigger='manual'):
     """
     Apply decay to all connections. Prune those below threshold.
     Returns stats about what happened.
+
+    Runs as a single transaction — decay, prune, scout dissolution, and
+    logging all commit together or not at all. Fixes the TOCTOU bug where
+    a concurrent hook could rescue a connection between count and delete.
     """
-    # Get stats before
-    before = conn.execute(
-        "SELECT COUNT(*) as cnt, AVG(strength) as avg_str FROM connections"
-    ).fetchone()
+    try:
+        # Get stats before
+        before = conn.execute(
+            "SELECT COUNT(*) as cnt, AVG(strength) as avg_str FROM connections"
+        ).fetchone()
 
-    # Apply decay
-    conn.execute(
-        "UPDATE connections SET strength = strength * decay_rate"
-    )
-
-    # Prune dead connections
-    pruned = conn.execute(
-        "SELECT COUNT(*) as cnt FROM connections WHERE strength < ?",
-        (PRUNE_THRESHOLD,)
-    ).fetchone()['cnt']
-
-    # Update scout log for dissolved scouts
-    conn.execute("""
-        UPDATE scout_log SET status = 'dissolved', dissolved_at = datetime('now')
-        WHERE status = 'active' AND connection_id IN (
-            SELECT id FROM connections WHERE strength < ?
+        # Apply decay
+        conn.execute(
+            "UPDATE connections SET strength = strength * decay_rate"
         )
-    """, (PRUNE_THRESHOLD,))
 
-    conn.execute("DELETE FROM connections WHERE strength < ?", (PRUNE_THRESHOLD,))
+        # Dissolve scouts and prune in a single atomic sequence —
+        # scout dissolution and delete use the same WHERE clause
+        conn.execute("""
+            UPDATE scout_log SET status = 'dissolved', dissolved_at = datetime('now')
+            WHERE status = 'active' AND connection_id IN (
+                SELECT id FROM connections WHERE strength < ?
+            )
+        """, (PRUNE_THRESHOLD,))
 
-    # Get stats after
-    after = conn.execute(
-        "SELECT COUNT(*) as cnt, AVG(strength) as avg_str FROM connections"
-    ).fetchone()
+        pruned = conn.execute(
+            "SELECT COUNT(*) as cnt FROM connections WHERE strength < ?",
+            (PRUNE_THRESHOLD,)
+        ).fetchone()['cnt']
 
-    # Log it
-    conn.execute(
-        """INSERT INTO decay_log (connections_decayed, connections_pruned,
-           avg_strength_before, avg_strength_after, trigger)
-           VALUES (?, ?, ?, ?, ?)""",
-        (before['cnt'], pruned, before['avg_str'], after['avg_str'], trigger)
-    )
-    conn.commit()
+        conn.execute("DELETE FROM connections WHERE strength < ?", (PRUNE_THRESHOLD,))
 
-    return {
-        'decayed': before['cnt'],
-        'pruned': pruned,
-        'avg_before': round(before['avg_str'] or 0, 4),
-        'avg_after': round(after['avg_str'] or 0, 4),
-        'remaining': after['cnt']
-    }
+        # Get stats after
+        after = conn.execute(
+            "SELECT COUNT(*) as cnt, AVG(strength) as avg_str FROM connections"
+        ).fetchone()
+
+        # Log it
+        conn.execute(
+            """INSERT INTO decay_log (connections_decayed, connections_pruned,
+               avg_strength_before, avg_strength_after, trigger)
+               VALUES (?, ?, ?, ?, ?)""",
+            (before['cnt'], pruned, before['avg_str'], after['avg_str'], trigger)
+        )
+        conn.commit()
+
+        return {
+            'decayed': before['cnt'],
+            'pruned': pruned,
+            'avg_before': round(before['avg_str'] or 0, 4),
+            'avg_after': round(after['avg_str'] or 0, 4),
+            'remaining': after['cnt']
+        }
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ─── Scouting ───
@@ -285,52 +305,57 @@ def create_scout(conn, source_name, target_name, session=None):
            VALUES (?, ?, ?, ?)""",
         (source_id, target_id, connection['id'], SCOUT_INITIAL_STRENGTH)
     )
-    conn.commit()
     return connection
 
 
 def promote_scouts(conn):
     """Promote scouts that have been reinforced above threshold."""
-    promoted = conn.execute("""
-        SELECT sl.id as scout_id, sl.connection_id, c.strength
-        FROM scout_log sl
-        JOIN connections c ON sl.connection_id = c.id
-        WHERE sl.status = 'active' AND c.strength >= ?
-    """, (SCOUT_PROMOTE_THRESHOLD,)).fetchall()
+    try:
+        promoted = conn.execute("""
+            SELECT sl.id as scout_id, sl.connection_id, c.strength
+            FROM scout_log sl
+            JOIN connections c ON sl.connection_id = c.id
+            WHERE sl.status = 'active' AND c.strength >= ?
+        """, (SCOUT_PROMOTE_THRESHOLD,)).fetchall()
 
-    for scout in promoted:
-        conn.execute(
-            "UPDATE scout_log SET status = 'promoted', promoted_at = datetime('now') WHERE id = ?",
-            (scout['scout_id'],)
-        )
-        conn.execute(
-            "UPDATE connections SET type = 'reinforcing' WHERE id = ? AND type = 'scout'",
-            (scout['connection_id'],)
-        )
+        for scout in promoted:
+            conn.execute(
+                "UPDATE scout_log SET status = 'promoted', promoted_at = datetime('now') WHERE id = ?",
+                (scout['scout_id'],)
+            )
+            conn.execute(
+                "UPDATE connections SET type = 'reinforcing' WHERE id = ? AND type = 'scout'",
+                (scout['connection_id'],)
+            )
 
-    conn.commit()
-    return len(promoted)
+        conn.commit()
+        return len(promoted)
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ─── Anastomosis Detection ───
 
 def _get_cluster(conn, node_id, min_strength=0.2, visited=None):
-    """Get the cluster of nodes connected to a given node above min_strength."""
+    """Get the cluster of nodes connected to a given node above min_strength.
+    Uses iterative BFS to avoid stack overflow on densely connected networks."""
     if visited is None:
         visited = set()
-    if node_id in visited:
-        return visited
-    visited.add(node_id)
-
-    neighbors = conn.execute("""
-        SELECT CASE WHEN source_id = ? THEN target_id ELSE source_id END as neighbor_id
-        FROM connections
-        WHERE (source_id = ? OR target_id = ?) AND strength >= ?
-    """, (node_id, node_id, node_id, min_strength)).fetchall()
-
-    for n in neighbors:
-        _get_cluster(conn, n['neighbor_id'], min_strength, visited)
-
+    queue = [node_id]
+    while queue:
+        current = queue.pop(0)
+        if current in visited:
+            continue
+        visited.add(current)
+        neighbors = conn.execute("""
+            SELECT CASE WHEN source_id = ? THEN target_id ELSE source_id END as neighbor_id
+            FROM connections
+            WHERE (source_id = ? OR target_id = ?) AND strength >= ?
+        """, (current, current, current, min_strength)).fetchall()
+        for n in neighbors:
+            if n['neighbor_id'] not in visited:
+                queue.append(n['neighbor_id'])
     return visited
 
 
