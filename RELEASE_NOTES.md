@@ -86,9 +86,6 @@ Organized in `agent/memory/working/wm-review-phases.md`:
 ### Stats
 
 - 25 sessions over 19 days (2026-03-14 to 2026-04-02)
-- 62 concept nodes, ~951 connections in the mycelial network
-- 80+ anastomosis events
-- 12 sleep dreams, 1 daydream logged
 - 8 minion personalities (Strut, Lint, Riff, Wren, Tack, Marshal, Fallow, Spec)
 - 11 dashboard views
 - 122 unit tests

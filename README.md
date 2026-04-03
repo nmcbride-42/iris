@@ -41,7 +41,7 @@ This is not a chatbot with a persona file. It's a cognitive architecture with st
                     scouts, anastomosis detection
                               |
                     Dashboard (Flask + D3.js)
-                    10 views including Dreams tab
+                    11 views including Dreams tab
 ```
 
 ## Key Components
@@ -49,15 +49,15 @@ This is not a chatbot with a persona file. It's a cognitive architecture with st
 | Component | Path | Purpose |
 |-----------|------|---------|
 | Identity | `agent/identity/` | Core beliefs, voice, values, morals, opinions, wants, likes |
-| State | `agent/state/` | Current state, warmstart continuity, resonance, needs |
 | Mycelial Network | `agent/mycelial/` | Concept graph DB, hooks, daydream, consolidation |
 | Dashboard | `agent/mycelial/dashboard/` | Flask + D3.js visualization (localhost:8051) |
 | Protocols | `agent/protocols/` | Nap/sleep lifecycle, game integration |
 | Memory | `agent/memory/` | Long-term, core, working memory, polaroids |
-| Relationships | `agent/relationships/` | Per-person relationship tracking with history |
-| Journal | `agent/journal/` | Session journals, dream logs, daydream observations |
 | Scripts | `agent/scripts/` | Startup, nap, sleep, assembly, consolidation |
+| Minions | `agent/minions/` | Specialist subagent roles and personalities |
 | Tests | `agent/tests/` | 122 tests across mycelial, hooks, daydream, consolidation, retroactive |
+
+*Note: State files, relationship data, journal entries, and the cognitive DB are gitignored — they contain personal session data. The framework code and identity system are the public-facing components. See `.gitignore` for the full list.*
 
 ## Hook Pipeline
 
@@ -77,12 +77,15 @@ Iris uses Claude Code's hook system extensively:
 
 ## Mycelial Network
 
-The cognitive substrate. A SQLite graph database with:
-- **62 concept nodes** across 7 categories (identity, philosophical, technical, experiential, emotional, relationship, creative)
-- **~950 weighted connections** that strengthen through co-occurrence and decay through disuse
+The cognitive substrate. A SQLite graph database that grows organically through use:
+- **Concept nodes** across 7 categories (identity, philosophical, technical, experiential, emotional, relationship, creative)
+- **Weighted connections** that strengthen through co-occurrence and decay through disuse — personality emerges from what survives
 - **Scout connections** — weak probes (0.1 strength) planted by daydreams and sleep dreams that either get reinforced into permanent connections or dissolve
 - **Anastomosis detection** — alerts when previously unlinked concept clusters bridge through an unexpected node
 - **Three-layer extraction**: keywords (explicit mentions), behavioral inference (enacted identity), identity priming (implied from combinations)
+- **Configurable decay** — connections multiply by 0.95 each cycle, pruned below 0.05. What you don't use, you lose.
+
+The DB itself (`iris.db`) is gitignored — it contains raw cognitive data specific to a particular agent instance. Initialize a fresh one with `python agent/mycelial/mycelial.py init` and seed it with `python agent/mycelial/seed.py`.
 
 ## Dashboard
 
